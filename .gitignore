@@ -3,3 +3,6 @@
 /bin
 /obj
 /*.user 
+
+# don't check this in, it has sensitive data
+/config.json
