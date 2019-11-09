@@ -1,3 +1,5 @@
+# visual studio workspace files
 /.vs
 /bin
 /obj
+/*.user 
