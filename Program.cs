@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +15,8 @@ namespace paperclipperfector
     {
         public static void Main(string[] args)
         {
+            new Thread(new ThreadStart(RedditScraper)).Start();
+
             CreateHostBuilder(args).Build().Run();
         }
 
@@ -24,5 +26,12 @@ namespace paperclipperfector
                 {
                     webBuilder.UseStartup<Startup>();
                 });
+
+        public static void RedditScraper()
+        {
+            var reddit = new Reddit.RedditAPI(appId: Config.Instance.appId, appSecret: Config.Instance.appSecret, accessToken: Config.Instance.accessToken, refreshToken: Config.Instance.refreshToken);
+            Dbg.Inf($"Username: {reddit.Account.Me.Name}");
+            Dbg.Inf($"Cake Day: {reddit.Account.Me.Created:D}");
+        }
     }
 }
