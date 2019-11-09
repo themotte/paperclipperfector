@@ -1,6 +1,6 @@
 using System;
 
-namespace paperclipperfector
+namespace PaperclipPerfector
 {
     internal static class Dbg
     {

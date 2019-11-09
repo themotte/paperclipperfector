@@ -1,6 +1,6 @@
 using System;
 
-namespace paperclipperfector.Data
+namespace PaperclipPerfector.Data
 {
     public class WeatherForecast
     {

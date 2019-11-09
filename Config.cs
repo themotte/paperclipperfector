@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using System.IO;
 
-namespace paperclipperfector
+namespace PaperclipPerfector
 {
     public class Config
     {

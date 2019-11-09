@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using paperclipperfector.Data;
+using PaperclipPerfector.Data;
 
-namespace paperclipperfector
+namespace PaperclipPerfector
 {
     public class Startup
     {
