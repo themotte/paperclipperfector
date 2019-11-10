@@ -9,8 +9,9 @@ namespace PaperclipPerfector
         public string appId;
         public string appSecret;
 
-        public string accessToken;
         public string refreshToken;
+
+        public string subreddit;
 
         private static Config StoredInstance;
         public static Config Instance

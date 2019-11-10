@@ -1,6 +1,7 @@
 {
     "appId": "CUUH9kg9F5Mhq5",
     "appSecret": "1zPff6Fy1RuN68UrJkrc0hxg",
-    "accessToken": "626775793947-6iKp2pDCE0vaivIF9YYVw9lheFQ",
-    "refreshToken": "626775793947-JNnrKURHah2wq8dzZjm63Av9Ec4"
+    "refreshToken": "626775793947-JNnrKURHah2wq8dzZjm63Av9Ec4",
+
+    "subreddit": "catpictures"
 }
