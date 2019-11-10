@@ -9,7 +9,7 @@ namespace PaperclipPerfector
     {
         public static void Main(string[] args)
         {
-            new Thread(new ThreadStart(RedditScraper)).Start();
+            new Thread(new RedditScraper().Main).Start();
 
             CreateHostBuilder(args).Build().Run();
         }
@@ -20,12 +20,5 @@ namespace PaperclipPerfector
                 {
                     webBuilder.UseStartup<Startup>();
                 });
-
-        public static void RedditScraper()
-        {
-            var reddit = new Reddit.RedditAPI(appId: Config.Instance.appId, appSecret: Config.Instance.appSecret, accessToken: Config.Instance.accessToken, refreshToken: Config.Instance.refreshToken);
-            Dbg.Inf($"Username: {reddit.Account.Me.Name}");
-            Dbg.Inf($"Cake Day: {reddit.Account.Me.Created:D}");
-        }
     }
 }
