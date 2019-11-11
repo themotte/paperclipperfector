@@ -7,7 +7,11 @@ namespace PaperclipPerfector
         {
             foreach (var post in RedditApi.Instance.Reports())
             {
-                Dbg.Inf("there was a post ~~");
+                Dbg.Inf($"{post.author}");
+                foreach (var report in post.Reports)
+                {
+                    Dbg.Inf($"    {report.reason}: {report.count}");
+                }
             }
         }
     }

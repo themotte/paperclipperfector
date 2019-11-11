@@ -1,6 +1,8 @@
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -66,15 +68,49 @@ namespace PaperclipPerfector
             client.DefaultRequestHeaders.Add("Authorization", $"bearer {response.access_token}");
         }
 
-        private class ReportsResponse
+        private class Item<T>
         {
-
+            public T data;
         }
-        public IEnumerable<string> Reports()
-        {
-            SendRequest<ReportsResponse>("about/reports", null);
 
-            yield break;
+        private class Listing<T>
+        {
+            public Item<T>[] children;
+            public string after;
+        }
+
+        public class Post
+        {
+            public string id;
+            public string author;
+            public int ups;
+            public string body_html;
+            public string link_permalink;
+
+            public string[][] user_reports;
+            public string[][] mod_reports;
+
+            public class Report
+            {
+                public string reason;
+                public int count;
+            }
+            public IEnumerable<Report> Reports
+            {
+                get
+                {
+                    var all_reports = mod_reports.Concat(user_reports);
+
+                    return all_reports.Select(raw => new Report() { reason = raw[0], count = int.Parse(raw[1]) });
+                }
+            }
+        }
+
+        public IEnumerable<Post> Reports()
+        {
+            var result = SendRequest<Item<Listing<Post>>>("about/reports", null);
+
+            return result.data.children.Select(item => item.data);
         }
 
         private T SendRequest<T>(string url, object request)
