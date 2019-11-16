@@ -3,7 +3,7 @@
     <div class="rw-title">@post.title</div>
     <div class="rw-votes">@post.ups</div>
     <div class="rw-timestamp">@post.creation</div>
-    <div class="rw-author">@post.author</div>
+    <div class="rw-author"><a href="@($"https://www.reddit.com/user/{post.author}")">@post.author</a></div>
     <div class="rw-reports">
         @foreach (var report in post.reports)
         {
