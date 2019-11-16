@@ -6,6 +6,7 @@ using System.Linq;
 
 namespace PaperclipPerfector
 {
+    // TODO: this all desperately needs to be properly synchronized
     public class Db
     {
         private SQLiteConnection dbConnection;
@@ -17,10 +18,12 @@ namespace PaperclipPerfector
 
         private SQLiteCommand updatePostState;
 
+        private SQLiteCommand readPost;
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
         private HashSet<Action> callbacks = new HashSet<Action>();
+        private Dictionary<string, WeakReference<Post>> activePosts = new Dictionary<string, WeakReference<Post>>();
 
         private static Db StoredInstance;
         public static Db Instance
@@ -82,7 +85,8 @@ namespace PaperclipPerfector
 
             updatePostState = new SQLiteCommand("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
 
-            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title FROM posts WHERE state = @state", dbConnection);
+            readPost = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
+            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE state = @state", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
         }
 
@@ -108,8 +112,6 @@ namespace PaperclipPerfector
         {
             using (var transaction = dbConnection.BeginTransaction())
             {
-                Dbg.Inf($"{post.author}");
-
                 insertPost.ExecuteNonQuery(new Dictionary<string, object>()
                 {
                     ["id"] = post.id,
@@ -119,7 +121,7 @@ namespace PaperclipPerfector
                     ["permalink"] = post.permalink,
                     ["timestamp"] = post.created_utc,
                     ["title"] = post.link_title,
-                    ["state"] = PostState.Pending,
+                    ["state"] = PostState.Pending.ToString(),
                 });
 
                 clearReports.ExecuteNonQuery(new Dictionary<string, object>()
@@ -129,8 +131,6 @@ namespace PaperclipPerfector
 
                 foreach (var report in post.Reports)
                 {
-                    Dbg.Inf($"    {report.reason}: {report.count}");
-
                     insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
                     {
                         ["id"] = report.reason,
@@ -148,7 +148,7 @@ namespace PaperclipPerfector
                 transaction.Commit();
             }
 
-            TriggerCallbacks();
+            UpdateActivePost(post.id);
         }
 
         public Post[] ReadAllPosts(PostState state)
@@ -161,38 +161,21 @@ namespace PaperclipPerfector
 
                 var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
                 {
-                    ["state"] = state,
+                    ["state"] = state.ToString(),
                 });
                 while (posts.Read())
                 {
-                    var post = new Post
-                    {
-                        id = posts.GetField<string>("id"),
-                        author = posts.GetField<string>("author"),
-                        html = posts.GetField<string>("html"),
-                        ups = posts.GetField<long>("ups"),
-                        link = posts.GetField<string>("permalink"),
-                        title = posts.GetField<string>("title"),
-                        creation = DateTimeOffset.FromUnixTimeSeconds(posts.GetField<long>("timestamp")),
-                        state = state,
-                    };
+                    string id = posts.GetField<string>("id");
+                    var post = activePosts.TryGetValue(id)?.TryGetTarget();
 
-                    var reports = new List<Post.Report>();
-                    var reportReader = readReportsFor.ExecuteReader(new Dictionary<string, object>()
+                    if (post == null)
                     {
-                        ["postId"] = post.id,
-                    });
-                    while (reportReader.Read())
-                    {
-                        reports.Add(new Post.Report
-                        {
-                            reason = reportReader.GetField<string>("reportTypeId"),
-                            count = reportReader.GetField<long>("count"),
-                        });
+                        post = new Post();
+                        activePosts[id] = new WeakReference<Post>(post);
+
+                        // If post isn't null, we already have the right data
+                        ReadPostFromReader(posts, post);
                     }
-                    reportReader.Close();
-
-                    post.reports = reports.OrderBy(report => report.count).ToArray();
 
                     result.Add(post);
                 }
@@ -204,12 +187,64 @@ namespace PaperclipPerfector
             }
         }
 
+        private void UpdateActivePost(string id)
+        {
+            var post = activePosts.TryGetValue(id)?.TryGetTarget();
+
+            if (post == null)
+            {
+                // nothin' to do
+                return;
+            }
+
+            var postDb = readPost.ExecuteReader(new Dictionary<string, object>()
+            {
+                ["id"] = id,
+            });
+            postDb.NextResult();
+
+            ReadPostFromReader(postDb, post);
+
+            postDb.Close();
+
+            TriggerCallbacks();
+        }
+
+        private void ReadPostFromReader(SQLiteDataReader reader, Post post)
+        {
+            post.id = reader.GetField<string>("id");
+            post.author = reader.GetField<string>("author");
+            post.html = reader.GetField<string>("html");
+            post.ups = reader.GetField<long>("ups");
+            post.link = reader.GetField<string>("permalink");
+            post.title = reader.GetField<string>("title");
+            post.creation = DateTimeOffset.FromUnixTimeSeconds(reader.GetField<long>("timestamp"));
+            post.state = Util.EnumParse<PostState>(reader.GetField<string>("state"));
+
+            var reports = new List<Post.Report>();
+            var reportReader = readReportsFor.ExecuteReader(new Dictionary<string, object>()
+            {
+                ["postId"] = post.id,
+            });
+            while (reportReader.Read())
+            {
+                reports.Add(new Post.Report
+                {
+                    reason = reportReader.GetField<string>("reportTypeId"),
+                    count = reportReader.GetField<long>("count"),
+                });
+            }
+            reportReader.Close();
+
+            post.reports = reports.OrderBy(report => report.count).ToArray();
+        }
+
         public void UpdatePostState(Post post, PostState state)
         {
             updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
             {
                 ["id"] = post.id,
-                ["state"] = state,
+                ["state"] = state.ToString(),
             });
 
             post.state = state;

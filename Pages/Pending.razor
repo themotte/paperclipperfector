@@ -21,13 +21,18 @@
 
     protected override void OnInitialized()
     {
-        Db.Instance.RegisterCallback(StateHasChanged);
+        Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
 
         posts = Db.Instance.ReadAllPosts(Db.PostState.Pending);
     }
 
+    public void StateHasChangedThreadsafe()
+    {
+        InvokeAsync(StateHasChanged).ContinueInBackground();
+    }
+
     public void Dispose()
     {
-        Db.Instance.UnregisterCallback(StateHasChanged);
+        Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
     }
 }
