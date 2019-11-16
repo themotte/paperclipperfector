@@ -157,6 +157,7 @@ namespace PaperclipPerfector
 
                     result.Add(post);
                 }
+                posts.Close();
 
                 transaction.Rollback();
 
