@@ -20,6 +20,8 @@ namespace PaperclipPerfector
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
+        private HashSet<Action> callbacks = new HashSet<Action>();
+
         private static Db StoredInstance;
         public static Db Instance
         {
@@ -84,6 +86,24 @@ namespace PaperclipPerfector
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
         }
 
+        public void RegisterCallback(Action callback)
+        {
+            callbacks.Add(callback);
+        }
+
+        public void UnregisterCallback(Action callback)
+        {
+            callbacks.Remove(callback);
+        }
+
+        private void TriggerCallbacks()
+        {
+            foreach (var callback in callbacks)
+            {
+                callback.Invoke();
+            }
+        }
+
         public void UpdatePostData(RedditApi.Post post)
         {
             using (var transaction = dbConnection.BeginTransaction())
@@ -127,6 +147,8 @@ namespace PaperclipPerfector
                 // if this fails, it's OK, we'll just pick it up again on our next pass
                 transaction.Commit();
             }
+
+            TriggerCallbacks();
         }
 
         public Post[] ReadAllPosts(PostState state)
@@ -180,6 +202,19 @@ namespace PaperclipPerfector
 
                 return result.ToArray();
             }
+        }
+
+        public void UpdatePostState(Post post, PostState state)
+        {
+            updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
+            {
+                ["id"] = post.id,
+                ["state"] = state,
+            });
+
+            post.state = state;
+
+            TriggerCallbacks();
         }
     }
 }

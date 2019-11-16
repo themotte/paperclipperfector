@@ -3,14 +3,16 @@
 @using PaperclipPerfector.Components
 @using PaperclipPerfector.Data
 
+@implements IDisposable
+
 <h1>Pending AAQCs</h1>
 
 @foreach (var post in posts)
 {
     <div class="post">
-        <ReportWidget post="@post"/>
+        <ReportWidget post="@post" />
         <div class="body">@((MarkupString)post.html)</div>
-        <ReportWidget post="@post" controls="true"/>
+        <ReportWidget post="@post" controls="true" />
     </div>
 }
 
@@ -19,6 +21,13 @@
 
     protected override void OnInitialized()
     {
+        Db.Instance.RegisterCallback(StateHasChanged);
+
         posts = Db.Instance.ReadAllPosts(Db.PostState.Pending);
+    }
+
+    public void Dispose()
+    {
+        Db.Instance.UnregisterCallback(StateHasChanged);
     }
 }
