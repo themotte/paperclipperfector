@@ -79,6 +79,8 @@ namespace PaperclipPerfector
             public string after;
         }
 
+        // These structures are mostly intended for Reddit API communication.
+        // Once they're put in the DB, they're not retrieved.
         public class Post
         {
             public string id;

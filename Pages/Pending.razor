@@ -5,20 +5,20 @@
 
 <h1>Pending AAQCs</h1>
 
-@foreach (var report in reports)
+@foreach (var post in posts)
 {
     <div>
-        <ReportWidget report="@report"/>
+        <ReportWidget post="@post"/>
         <!-- post text -->
-        <ReportWidget report="@report" controls="true"/>
+        <ReportWidget post="@post" controls="true"/>
     </div>
 }
 
 @code {
-    private Report[] reports = new Report[2];
+    private Db.Post[] posts = null;
 
     protected override void OnInitialized()
     {
-        reports = Db.Instance.ReadAllPosts().Select(post => new Report() { post = post }).ToArray();
+        posts = Db.Instance.ReadAllPosts();
     }
 }

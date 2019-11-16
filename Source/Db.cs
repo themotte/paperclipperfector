@@ -1,5 +1,8 @@
+
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Linq;
 
 namespace PaperclipPerfector
 {
@@ -26,6 +29,24 @@ namespace PaperclipPerfector
                 }
 
                 return StoredInstance;
+            }
+        }
+
+        public class Post
+        {
+            public string id;
+            public string author;
+            public long ups;
+            public string html;
+            public string link;
+            public DateTimeOffset creation;
+
+            public Report[] reports;
+
+            public class Report
+            {
+                public string reason;
+                public long count;
             }
         }
 
@@ -93,24 +114,43 @@ namespace PaperclipPerfector
             }
         }
 
-        public RedditApi.Post[] ReadAllPosts()
+        public Post[] ReadAllPosts()
         {
-            // This is just for the sake of getting an atomic transaction
+            // This is just for the sake of getting an atomic snapshot
+            // It's okay if it's a little out of date
             using (var transaction = dbConnection.BeginTransaction())
             {
-                var result = new List<RedditApi.Post>();
+                var result = new List<Post>();
 
                 var posts = readPosts.ExecuteReader();
                 while (posts.Read())
                 {
-                    var post = new RedditApi.Post();
-                    
-                    post.id = posts.GetField<string>("id");
-                    post.author = posts.GetField<string>("author");
-                    post.body_html = posts.GetField<string>("html");
-                    post.ups = (int)posts.GetField<long>("ups");    // this is janky but sqlite doesn't like casting to int, I guess
-                    post.link_permalink = posts.GetField<string>("permalink");
-                    post.created_utc = posts.GetField<long>("timestamp");
+                    var post = new Post
+                    {
+                        id = posts.GetField<string>("id"),
+                        author = posts.GetField<string>("author"),
+                        html = posts.GetField<string>("html"),
+                        ups = posts.GetField<long>("ups"),
+                        link = posts.GetField<string>("permalink"),
+                        creation = DateTimeOffset.FromUnixTimeSeconds(posts.GetField<long>("timestamp"))
+                    };
+
+                    var reports = new List<Post.Report>();
+                    var reportReader = readReportsFor.ExecuteReader(new Dictionary<string, object>()
+                    {
+                        ["postId"] = post.id,
+                    });
+                    while (reportReader.Read())
+                    {
+                        reports.Add(new Post.Report
+                        {
+                            reason = reportReader.GetField<string>("reportTypeId"),
+                            count = reportReader.GetField<long>("count"),
+                        });
+                    }
+                    reportReader.Close();
+
+                    post.reports = reports.OrderBy(report => report.count).ToArray();
 
                     result.Add(post);
                 }
