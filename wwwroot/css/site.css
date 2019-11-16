@@ -221,7 +221,7 @@ app {
 
 .rw-votes {
   float: left;
-  width: 10em;
+  width: 10rem;
 }
 
 .rw-timestamp {
@@ -236,9 +236,49 @@ app {
   
 }
 
+.rw-actions {
+    float: right;
+    text-align: right;
+    margin: 0.1rem;
+}
+
 .body blockquote {
   border-left: 2px solid #c5c1ad;
   padding: 0 8px;
   margin-left: 5px;
   background-color: #f8f8f8;
 }
+
+.reportbutton {
+  border-style: solid;
+  border-radius: 5px;
+  border-width: 1px;
+  border-color: #bbb;
+  padding: 0.2rem;
+  margin: 0.1rem;
+  text-align: center;
+}
+
+.reportbutton-approved {
+  background-color: #efe;
+}
+
+  .reportbutton-approved.active {
+    background-color: #cdc;
+  }
+
+.reportbutton-pending {
+    background-color: #eee;
+}
+
+  .reportbutton-pending.active {
+    background-color: #ccc;
+  }
+
+.reportbutton-rejected {
+  background-color: #fee;
+}
+
+  .reportbutton-rejected.active {
+    background-color: #dcc;
+  }

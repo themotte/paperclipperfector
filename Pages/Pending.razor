@@ -19,6 +19,6 @@
 
     protected override void OnInitialized()
     {
-        posts = Db.Instance.ReadAllPosts();
+        posts = Db.Instance.ReadAllPosts(Db.PostState.Pending);
     }
 }

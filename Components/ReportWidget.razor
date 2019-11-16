@@ -4,6 +4,14 @@
     <div class="rw-votes">@post.ups</div>
     <div class="rw-timestamp">@post.creation</div>
     <div class="rw-author"><a href="@($"https://www.reddit.com/user/{post.author}")">@post.author</a></div>
+    <div class="rw-actions">
+        @if (controls)
+        {
+            <ReportButton post="@post" action="@Db.PostState.Rejected" />
+            <ReportButton post="@post" action="@Db.PostState.Pending" />
+            <ReportButton post="@post" action="@Db.PostState.Approved" />
+        }
+    </div>
     <div class="rw-reports">
         @foreach (var report in post.reports)
         {

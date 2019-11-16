@@ -1,0 +1,6 @@
+<span class="reportbutton @($"reportbutton-{action.ToString().ToLower()}") @(post.state == action ? "active" : "")">@(action.ToString().ToLower())</span>
+
+@code {
+    [Parameter] public Db.PostState action { get; set; }
+    [Parameter] public Db.Post post { get; set; }
+}

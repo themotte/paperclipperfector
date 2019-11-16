@@ -15,6 +15,8 @@ namespace PaperclipPerfector
         private SQLiteCommand clearReports;
         private SQLiteCommand insertReport;
 
+        private SQLiteCommand updatePostState;
+
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
@@ -41,6 +43,7 @@ namespace PaperclipPerfector
             public string link;
             public string title;
             public DateTimeOffset creation;
+            public PostState state;
 
             public Report[] reports;
 
@@ -51,6 +54,13 @@ namespace PaperclipPerfector
             }
         }
 
+        public enum PostState
+        {
+            Pending,
+            Approved,
+            Rejected,
+        }
+
         public Db()
         {
             // Init DB
@@ -58,17 +68,19 @@ namespace PaperclipPerfector
             dbConnection.Open();
 
             // Init rows
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT, html TEXT, ups INTEGER, permalink TEXT, timestamp INTEGER, title TEXT)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT, html TEXT, ups INTEGER, permalink TEXT, timestamp INTEGER, title TEXT, state TEXT)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, assigned INTEGER, value INTEGER)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT, reportTypeId TEXT, count INTEGER, PRIMARY KEY(postId, reportTypeId))");
 
             // Init commands
-            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
+            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
             insertReportType = new SQLiteCommand("INSERT OR IGNORE INTO reportTypes(id, assigned, value) VALUES(@id, 0, 0)", dbConnection);
             clearReports = new SQLiteCommand("DELETE FROM reports WHERE postId = @postId", dbConnection);
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
-            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title FROM posts", dbConnection);
+            updatePostState = new SQLiteCommand("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
+
+            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title FROM posts WHERE state = @state", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
         }
 
@@ -87,6 +99,7 @@ namespace PaperclipPerfector
                     ["permalink"] = post.permalink,
                     ["timestamp"] = post.created_utc,
                     ["title"] = post.link_title,
+                    ["state"] = PostState.Pending,
                 });
 
                 clearReports.ExecuteNonQuery(new Dictionary<string, object>()
@@ -116,7 +129,7 @@ namespace PaperclipPerfector
             }
         }
 
-        public Post[] ReadAllPosts()
+        public Post[] ReadAllPosts(PostState state)
         {
             // This is just for the sake of getting an atomic snapshot
             // It's okay if it's a little out of date
@@ -124,7 +137,10 @@ namespace PaperclipPerfector
             {
                 var result = new List<Post>();
 
-                var posts = readPosts.ExecuteReader();
+                var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
+                {
+                    ["state"] = state,
+                });
                 while (posts.Read())
                 {
                     var post = new Post
@@ -135,7 +151,8 @@ namespace PaperclipPerfector
                         ups = posts.GetField<long>("ups"),
                         link = posts.GetField<string>("permalink"),
                         title = posts.GetField<string>("title"),
-                        creation = DateTimeOffset.FromUnixTimeSeconds(posts.GetField<long>("timestamp"))
+                        creation = DateTimeOffset.FromUnixTimeSeconds(posts.GetField<long>("timestamp")),
+                        state = state,
                     };
 
                     var reports = new List<Post.Report>();
