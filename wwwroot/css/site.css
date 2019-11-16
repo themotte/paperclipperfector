@@ -235,3 +235,10 @@ app {
 .rw-reports {
   
 }
+
+.body blockquote {
+  border-left: 2px solid #c5c1ad;
+  padding: 0 8px;
+  margin-left: 5px;
+  background-color: #f8f8f8;
+}
