@@ -27,6 +27,8 @@ namespace PaperclipPerfector
         private HttpClient client;
         private HttpClient accessClient;
 
+        private bool verbose = false;
+
         private RedditApi()
         {
             client = new HttpClient();
@@ -132,7 +134,10 @@ namespace PaperclipPerfector
             string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}?raw_json=1";
             var requestContent = request != null ? new StringContent(requestSerialized, Encoding.UTF8, "application/json") : null;
             var method = requestContent != null ? HttpMethod.Post : HttpMethod.Get;
-            Dbg.Inf($"{method} {uri}: {requestSerialized}");
+            if (verbose)
+            {
+                Dbg.Inf($"{method} {uri}: {requestSerialized}");
+            }
             var message = new HttpRequestMessage(requestContent != null ? HttpMethod.Post : HttpMethod.Get, uri);
 
             //message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue();
@@ -143,7 +148,10 @@ namespace PaperclipPerfector
 
             var content = result.Content.ReadAsStringAsync().Result;
 
-            Dbg.Inf($"  {result.StatusCode}: {content}");
+            if (verbose)
+            {
+                Dbg.Inf($"  {result.StatusCode}: {content}");
+            }
 
             return JsonConvert.DeserializeObject<T>(content);
         }
