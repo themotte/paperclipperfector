@@ -39,6 +39,7 @@ namespace PaperclipPerfector
             public long ups;
             public string html;
             public string link;
+            public string title;
             public DateTimeOffset creation;
 
             public Report[] reports;
@@ -57,17 +58,17 @@ namespace PaperclipPerfector
             dbConnection.Open();
 
             // Init rows
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT, html TEXT, ups INTEGER, permalink TEXT, timestamp INTEGER)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT, html TEXT, ups INTEGER, permalink TEXT, timestamp INTEGER, title TEXT)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, assigned INTEGER, value INTEGER)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT, reportTypeId TEXT, count INTEGER, PRIMARY KEY(postId, reportTypeId))");
 
             // Init commands
-            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp) VALUES(@id, @author, @html, @ups, @permalink, @timestamp) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
+            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
             insertReportType = new SQLiteCommand("INSERT OR IGNORE INTO reportTypes(id, assigned, value) VALUES(@id, 0, 0)", dbConnection);
             clearReports = new SQLiteCommand("DELETE FROM reports WHERE postId = @postId", dbConnection);
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
-            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp FROM posts", dbConnection);
+            readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title FROM posts", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
         }
 
@@ -85,6 +86,7 @@ namespace PaperclipPerfector
                     ["ups"] = post.ups,
                     ["permalink"] = post.link_permalink,
                     ["timestamp"] = post.created_utc,
+                    ["title"] = post.link_title,
                 });
 
                 clearReports.ExecuteNonQuery(new Dictionary<string, object>()
@@ -132,6 +134,7 @@ namespace PaperclipPerfector
                         html = posts.GetField<string>("html"),
                         ups = posts.GetField<long>("ups"),
                         link = posts.GetField<string>("permalink"),
+                        title = posts.GetField<string>("title"),
                         creation = DateTimeOffset.FromUnixTimeSeconds(posts.GetField<long>("timestamp"))
                     };
 

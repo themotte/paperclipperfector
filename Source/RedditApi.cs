@@ -89,6 +89,7 @@ namespace PaperclipPerfector
             public string body_html;
             public string link_permalink;
             public long created_utc;
+            public string link_title;
 
             public string[][] user_reports;
             public string[][] mod_reports;
