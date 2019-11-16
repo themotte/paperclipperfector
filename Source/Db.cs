@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace PaperclipPerfector
 {
-    // TODO: this all desperately needs to be properly synchronized
+    // The lock on activePosts is absolutely more aggressive than necessary, but it really *really* does not matter for this application.
     public class Db
     {
         private SQLiteConnection dbConnection;
@@ -110,80 +110,86 @@ namespace PaperclipPerfector
 
         public void UpdatePostData(RedditApi.Post post)
         {
-            using (var transaction = dbConnection.BeginTransaction())
+            lock (activePosts)
             {
-                insertPost.ExecuteNonQuery(new Dictionary<string, object>()
+                using (var transaction = dbConnection.BeginTransaction())
                 {
-                    ["id"] = post.id,
-                    ["author"] = post.author,
-                    ["html"] = post.body_html,
-                    ["ups"] = post.ups,
-                    ["permalink"] = post.permalink,
-                    ["timestamp"] = post.created_utc,
-                    ["title"] = post.link_title,
-                    ["state"] = PostState.Pending.ToString(),
-                });
-
-                clearReports.ExecuteNonQuery(new Dictionary<string, object>()
-                {
-                    ["postId"] = post.id,
-                });
-
-                foreach (var report in post.Reports)
-                {
-                    insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
+                    insertPost.ExecuteNonQuery(new Dictionary<string, object>()
                     {
-                        ["id"] = report.reason,
+                        ["id"] = post.id,
+                        ["author"] = post.author,
+                        ["html"] = post.body_html,
+                        ["ups"] = post.ups,
+                        ["permalink"] = post.permalink,
+                        ["timestamp"] = post.created_utc,
+                        ["title"] = post.link_title,
+                        ["state"] = PostState.Pending.ToString(),
                     });
 
-                    insertReport.ExecuteNonQuery(new Dictionary<string, object>()
+                    clearReports.ExecuteNonQuery(new Dictionary<string, object>()
                     {
                         ["postId"] = post.id,
-                        ["reportTypeId"] = report.reason,
-                        ["count"] = report.count,
                     });
+
+                    foreach (var report in post.Reports)
+                    {
+                        insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
+                        {
+                            ["id"] = report.reason,
+                        });
+
+                        insertReport.ExecuteNonQuery(new Dictionary<string, object>()
+                        {
+                            ["postId"] = post.id,
+                            ["reportTypeId"] = report.reason,
+                            ["count"] = report.count,
+                        });
+                    }
+
+                    // if this fails, it's OK, we'll just pick it up again on our next pass
+                    transaction.Commit();
                 }
 
-                // if this fails, it's OK, we'll just pick it up again on our next pass
-                transaction.Commit();
+                UpdateActivePost(post.id);
             }
-
-            UpdateActivePost(post.id);
         }
 
         public Post[] ReadAllPosts(PostState state)
         {
-            // This is just for the sake of getting an atomic snapshot
-            // It's okay if it's a little out of date
-            using (var transaction = dbConnection.BeginTransaction())
+            lock (activePosts)
             {
-                var result = new List<Post>();
-
-                var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
+                // This is just for the sake of getting an atomic snapshot
+                // It's okay if it's a little out of date
+                using (var transaction = dbConnection.BeginTransaction())
                 {
-                    ["state"] = state.ToString(),
-                });
-                while (posts.Read())
-                {
-                    string id = posts.GetField<string>("id");
-                    var post = activePosts.TryGetValue(id)?.TryGetTarget();
+                    var result = new List<Post>();
 
-                    if (post == null)
+                    var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
                     {
-                        post = new Post();
-                        activePosts[id] = new WeakReference<Post>(post);
+                        ["state"] = state.ToString(),
+                    });
+                    while (posts.Read())
+                    {
+                        string id = posts.GetField<string>("id");
+                        var post = activePosts.TryGetValue(id)?.TryGetTarget();
 
-                        // If post isn't null, we already have the right data
-                        ReadPostFromReader(posts, post);
+                        if (post == null)
+                        {
+                            post = new Post();
+                            activePosts[id] = new WeakReference<Post>(post);
+
+                            // If post isn't null, we already have the right data
+                            ReadPostFromReader(posts, post);
+                        }
+
+                        result.Add(post);
                     }
+                    posts.Close();
 
-                    result.Add(post);
+                    transaction.Rollback();
+
+                    return result.ToArray();
                 }
-                posts.Close();
-
-                transaction.Rollback();
-
-                return result.ToArray();
             }
         }
 
@@ -241,15 +247,18 @@ namespace PaperclipPerfector
 
         public void UpdatePostState(Post post, PostState state)
         {
-            updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
+            lock (activePosts)
             {
-                ["id"] = post.id,
-                ["state"] = state.ToString(),
-            });
+                updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["id"] = post.id,
+                    ["state"] = state.ToString(),
+                });
 
-            post.state = state;
+                post.state = state;
 
-            TriggerCallbacks();
+                TriggerCallbacks();
+            }
         }
     }
 }
