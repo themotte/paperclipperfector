@@ -1,0 +1,24 @@
+@page "/pending"
+
+@using PaperclipPerfector.Components
+@using PaperclipPerfector.Data
+
+<h1>Pending AAQCs</h1>
+
+@foreach (var report in reports)
+{
+    <div>
+        <ReportWidget report="@report"/>
+        <!-- post text -->
+        <ReportWidget report="@report" controls="true"/>
+    </div>
+}
+
+@code {
+    private Report[] reports = new Report[2];
+
+    protected override void OnInitialized()
+    {
+        reports = Db.Instance.ReadAllPosts().Select(post => new Report() { post = post }).ToArray();
+    }
+}

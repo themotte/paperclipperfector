@@ -1,0 +1,10 @@
+<div class="permalink">@report.post.id</div>
+<div class="title">title</div>
+<div class="votes">@report.post.ups</div>
+<div class="timestamp">@report.post.created_utc</div>
+<div class="author">@report.post.author</div>
+
+@code {
+    [Parameter] public bool controls { get; set; }
+    [Parameter] public PaperclipPerfector.Data.Report report { get; set; }
+}

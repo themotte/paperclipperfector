@@ -9,6 +9,9 @@ namespace PaperclipPerfector
     {
         public static void Main(string[] args)
         {
+            // Init
+            var db = Db.Instance;
+
             new Thread(new RedditScraper().Main).Start();
 
             CreateHostBuilder(args).Build().Run();
