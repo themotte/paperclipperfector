@@ -84,7 +84,7 @@ namespace PaperclipPerfector
                     ["author"] = post.author,
                     ["html"] = post.body_html,
                     ["ups"] = post.ups,
-                    ["permalink"] = post.link_permalink,
+                    ["permalink"] = post.permalink,
                     ["timestamp"] = post.created_utc,
                     ["title"] = post.link_title,
                 });
