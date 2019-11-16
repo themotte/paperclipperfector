@@ -1,0 +1,33 @@
+@implements IDisposable
+
+@foreach (var post in posts)
+{
+    <div class="post">
+        <ReportWidget post="@post" />
+        <div class="body">@((MarkupString)post.html)</div>
+        <ReportWidget post="@post" controls="true" />
+    </div>
+}
+
+@code {
+    [Parameter] public Db.PostState segment { get; set; }
+
+    private Db.Post[] posts = null;
+
+    protected override void OnParametersSet()
+    {
+        Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
+
+        posts = Db.Instance.ReadAllPosts(segment);
+    }
+
+    public void StateHasChangedThreadsafe()
+    {
+        InvokeAsync(StateHasChanged).ContinueInBackground();
+    }
+
+    public void Dispose()
+    {
+        Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
+    }
+}
