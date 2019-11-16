@@ -181,3 +181,57 @@ app {
         display: block;
     }
 }
+
+/* Report widget */
+
+.post {
+  width: 100%;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-style: solid;
+  border-radius: 5px;
+  border-width: 2px;
+  border-color: #eee;
+  background-color: #fcfcfc;
+}
+
+.body {
+    padding: 1rem;
+}
+
+.reportwidget {
+  font-size: 0.8rem;
+  clear: both;
+  width: 100%;
+  border-style: solid;
+  border-radius: 5px;
+  border-width: 1px;
+  border-color: #eee;
+  background-color: #f8f8f8;
+  padding: 0.3rem;
+}
+
+.rw-permalink {
+  float: left;
+}
+
+.rw-title {
+  text-align: right;
+}
+
+.rw-votes {
+  float: left;
+  width: 10em;
+}
+
+.rw-timestamp {
+  float: left;
+}
+
+.rw-author {
+  text-align: right;
+}
+
+.rw-reports {
+  
+}

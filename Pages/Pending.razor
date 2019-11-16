@@ -7,9 +7,9 @@
 
 @foreach (var post in posts)
 {
-    <div>
+    <div class="post">
         <ReportWidget post="@post"/>
-        <!-- post text -->
+        <div class="body">@((MarkupString)post.html)</div>
         <ReportWidget post="@post" controls="true"/>
     </div>
 }

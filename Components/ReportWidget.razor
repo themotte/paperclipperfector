@@ -1,8 +1,16 @@
-<div class="permalink">@post.id</div>
-<div class="title">@post.title</div>
-<div class="votes">@post.ups</div>
-<div class="timestamp">@post.creation</div>
-<div class="author">@post.author</div>
+<div class="reportwidget">
+    <div class="rw-permalink"><a href="@post.link?context=3">@post.id</a></div>
+    <div class="rw-title">@post.title</div>
+    <div class="rw-votes">@post.ups</div>
+    <div class="rw-timestamp">@post.creation</div>
+    <div class="rw-author">@post.author</div>
+    <div class="rw-reports">
+        @foreach (var report in post.reports)
+        {
+            <div class="rw-report">@report.count: @report.reason</div>
+        }
+    </div>
+</div>
 
 @code {
     [Parameter] public bool controls { get; set; }

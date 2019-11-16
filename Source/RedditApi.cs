@@ -129,7 +129,7 @@ namespace PaperclipPerfector
                 requestSerialized = JsonConvert.SerializeObject(request);
             }
 
-            string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}";
+            string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}?raw_json=1";
             var requestContent = request != null ? new StringContent(requestSerialized, Encoding.UTF8, "application/json") : null;
             var method = requestContent != null ? HttpMethod.Post : HttpMethod.Get;
             Dbg.Inf($"{method} {uri}: {requestSerialized}");
