@@ -22,8 +22,13 @@ namespace PaperclipPerfector
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
+        private SQLiteCommand updateReportType;
+
+        private SQLiteCommand readReportTypes;
+
         private HashSet<Action> callbacks = new HashSet<Action>();
         private Dictionary<string, WeakReference<Post>> activePosts = new Dictionary<string, WeakReference<Post>>();
+        private Dictionary<string, WeakReference<ReportType>> activeReportTypes = new Dictionary<string, WeakReference<ReportType>>();
 
         private static Db StoredInstance;
         public static Db Instance
@@ -37,6 +42,13 @@ namespace PaperclipPerfector
 
                 return StoredInstance;
             }
+        }
+
+        public enum PostState
+        {
+            Pending,
+            Approved,
+            Rejected,
         }
 
         public class Post
@@ -59,11 +71,18 @@ namespace PaperclipPerfector
             }
         }
 
-        public enum PostState
+        public enum ReportCategory
         {
-            Pending,
-            Approved,
-            Rejected,
+            Unassigned,
+            Positive,
+            Neutral,
+            Negative,
+        }
+
+        public class ReportType
+        {
+            public string id;
+            public ReportCategory category;
         }
 
         public Db()
@@ -73,13 +92,13 @@ namespace PaperclipPerfector
             dbConnection.Open();
 
             // Init rows
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT, html TEXT, ups INTEGER, permalink TEXT, timestamp INTEGER, title TEXT, state TEXT)");
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, assigned INTEGER, value INTEGER)");
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT, reportTypeId TEXT, count INTEGER, PRIMARY KEY(postId, reportTypeId))");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT NOT NULL, html TEXT NOT NULL, ups INTEGER NOT NULL, permalink TEXT NOT NULL, timestamp INTEGER NOT NULL, title TEXT NOT NULL, state TEXT NOT NULL)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, category TEXT NOT NULL)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT NOT NULL, reportTypeId TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(postId, reportTypeId))");
 
             // Init commands
             insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
-            insertReportType = new SQLiteCommand("INSERT OR IGNORE INTO reportTypes(id, assigned, value) VALUES(@id, 0, 0)", dbConnection);
+            insertReportType = new SQLiteCommand($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
             clearReports = new SQLiteCommand("DELETE FROM reports WHERE postId = @postId", dbConnection);
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
@@ -88,6 +107,10 @@ namespace PaperclipPerfector
             readPost = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
             readPosts = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE state = @state", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
+
+            updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
+
+            readReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes", dbConnection);
         }
 
         public void RegisterCallback(Action callback)
@@ -256,6 +279,60 @@ namespace PaperclipPerfector
                 });
 
                 post.state = state;
+
+                TriggerCallbacks();
+            }
+        }
+
+        public ReportType[] ReadAllReportTypes()
+        {
+            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
+            lock (activePosts)
+            {
+                // This is just for the sake of getting an atomic snapshot
+                // It's okay if it's a little out of date
+                using (var transaction = dbConnection.BeginTransaction())
+                {
+                    var result = new List<ReportType>();
+
+                    var reportTypes = readReportTypes.ExecuteReader();
+                    while (reportTypes.Read())
+                    {
+                        string id = reportTypes.GetField<string>("id");
+                        var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
+
+                        if (reportType == null)
+                        {
+                            reportType = new ReportType();
+                            activeReportTypes[id] = new WeakReference<ReportType>(reportType);
+
+                            reportType.id = id;
+                            reportType.category = Util.EnumParse<ReportCategory>(reportTypes.GetField<string>("category"));
+                        }
+
+                        result.Add(reportType);
+                    }
+                    reportTypes.Close();
+
+                    transaction.Rollback();
+
+                    return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
+                }
+            }
+        }
+
+        public void UpdateReportTypeCategory(ReportType reportType, ReportCategory category)
+        {
+            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
+            lock (activePosts)
+            {
+                updateReportType.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["id"] = reportType.id,
+                    ["category"] = category.ToString(),
+                });
+
+                reportType.category = category;
 
                 TriggerCallbacks();
             }

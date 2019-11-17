@@ -1,0 +1,33 @@
+@page "/reports"
+
+@using PaperclipPerfector.Components
+
+@implements IDisposable
+
+<div class="reporttypes">
+    @foreach (var reportType in reportTypes)
+    {
+        <ReportTypeWidget reportType="@reportType" />
+    }
+</div>
+
+@code {
+    private Db.ReportType[] reportTypes = null;
+
+    protected override void OnParametersSet()
+    {
+        Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
+
+        reportTypes = Db.Instance.ReadAllReportTypes();
+    }
+
+    public void StateHasChangedThreadsafe()
+    {
+        InvokeAsync(StateHasChanged).ContinueInBackground();
+    }
+
+    public void Dispose()
+    {
+        Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
+    }
+}

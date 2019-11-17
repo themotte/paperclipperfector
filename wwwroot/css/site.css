@@ -199,6 +199,13 @@ app {
     padding: 1rem;
 }
 
+  .body blockquote {
+    border-left: 2px solid #c5c1ad;
+    padding: 0 8px;
+    margin-left: 5px;
+    background-color: #f8f8f8;
+  }
+
 .reportwidget {
   font-size: 0.8rem;
   clear: both;
@@ -242,14 +249,7 @@ app {
     margin: 0.1rem;
 }
 
-.body blockquote {
-  border-left: 2px solid #c5c1ad;
-  padding: 0 8px;
-  margin-left: 5px;
-  background-color: #f8f8f8;
-}
-
-.reportbutton {
+.button {
   border-style: solid;
   border-radius: 5px;
   border-width: 1px;
@@ -280,5 +280,49 @@ app {
 }
 
   .reportbutton-rejected.active {
+    background-color: #dcc;
+  }
+
+.reporttypes {
+    width: 100%;
+    max-width: 40rem;
+    margin: auto;
+}
+
+.reporttypewidget {
+  display: flex;
+}
+
+.rtw-reason {
+  float: left;
+  margin: auto auto auto 0px;
+  vertical-align: central;
+}
+
+.rtw-actions {
+  text-align: right;
+}
+
+.reporttypebutton-positive {
+  background-color: #efe;
+}
+
+  .reporttypebutton-positive.active {
+    background-color: #cdc;
+  }
+
+.reporttypebutton-neutral {
+  background-color: #eee;
+}
+
+  .reporttypebutton-neutral.active {
+    background-color: #ccc;
+  }
+
+.reporttypebutton-negative {
+  background-color: #fee;
+}
+
+  .reporttypebutton-negative.active {
     background-color: #dcc;
   }

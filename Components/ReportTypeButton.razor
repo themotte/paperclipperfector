@@ -1,0 +1,14 @@
+<button
+    class="button @($"reporttypebutton-{category.ToString().ToLower()}") @(reportType.category == category ? "active" : "")"
+    @onclick="SetReportTypeMeaning"
+>@(category.ToString().ToLower())</button>
+
+@code {
+    [Parameter] public Db.ReportType reportType { get; set; }
+    [Parameter] public Db.ReportCategory category { get; set; }
+
+    public void SetReportTypeMeaning()
+    {
+        Db.Instance.UpdateReportTypeCategory(reportType, category);
+    }
+}

@@ -1,0 +1,13 @@
+<div class="reporttypewidget">
+    <div class="rtw-reason">@reportType.id</div>
+    <div class="rtw-actions">
+        <ReportTypeButton reportType="@reportType" category="@Db.ReportCategory.Negative" />
+        <ReportTypeButton reportType="@reportType" category="@Db.ReportCategory.Neutral" />
+        <ReportTypeButton reportType="@reportType" category="@Db.ReportCategory.Positive" />
+    </div>
+    <div style="clear: both;" />
+</div>
+
+@code {
+    [Parameter] public Db.ReportType reportType { get; set; }
+}

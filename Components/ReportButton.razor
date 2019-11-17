@@ -1,5 +1,5 @@
 <button
-    class="reportbutton @($"reportbutton-{action.ToString().ToLower()}") @(post.state == action ? "active" : "")"
+    class="button @($"reportbutton-{action.ToString().ToLower()}") @(post.state == action ? "active" : "")"
     @onclick="SetPostState"
 >@(action.ToString().ToLower())</button>
 
