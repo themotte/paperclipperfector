@@ -15,7 +15,7 @@
     <div class="rw-reports">
         @foreach (var report in post.reports)
         {
-            <div class="rw-report">@report.count: @report.reason</div>
+            <div class="rw-report">@report.count: @report.reason.id</div>
         }
     </div>
     <div style="clear: both;" />

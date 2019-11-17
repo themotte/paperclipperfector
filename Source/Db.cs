@@ -24,6 +24,7 @@ namespace PaperclipPerfector
 
         private SQLiteCommand updateReportType;
 
+        private SQLiteCommand readReportType;
         private SQLiteCommand readReportTypes;
         private SQLiteCommand readUnassignedReportTypes;
 
@@ -67,7 +68,7 @@ namespace PaperclipPerfector
 
             public class Report
             {
-                public string reason;
+                public ReportType reason;
                 public long count;
             }
         }
@@ -111,6 +112,7 @@ namespace PaperclipPerfector
 
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
 
+            readReportType = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
             readReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes", dbConnection);
             readUnassignedReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE category = 'Unassigned'", dbConnection);
         }
@@ -261,7 +263,7 @@ namespace PaperclipPerfector
             {
                 reports.Add(new Post.Report
                 {
-                    reason = reportReader.GetField<string>("reportTypeId"),
+                    reason = GetReportType(reportReader.GetField<string>("reportTypeId")),
                     count = reportReader.GetField<long>("count"),
                 });
             }
@@ -286,41 +288,65 @@ namespace PaperclipPerfector
             }
         }
 
+        public ReportType GetReportType(string id)
+        {
+            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
+            lock (activePosts)
+            {
+                var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
+                if (reportType == null)
+                {
+                    reportType = new ReportType();
+                    activeReportTypes[id] = new WeakReference<ReportType>(reportType);
+
+                    var reader = readReportType.ExecuteReader(new Dictionary<string, object>()
+                    {
+                        ["id"] = id,
+                    });
+                    reader.Read();
+
+                    ReadReportTypeFromReader(reader, reportType);
+
+                    reader.Close();
+                }
+
+                return reportType;
+            }
+        }
+
         public ReportType[] ReadAllReportTypes()
         {
             // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
             lock (activePosts)
             {
-                // This is just for the sake of getting an atomic snapshot
-                // It's okay if it's a little out of date
-                using (var transaction = dbConnection.BeginTransaction())
+                var result = new List<ReportType>();
+
+                var reportTypes = readReportTypes.ExecuteReader();
+                while (reportTypes.Read())
                 {
-                    var result = new List<ReportType>();
+                    string id = reportTypes.GetField<string>("id");
+                    var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
 
-                    var reportTypes = readReportTypes.ExecuteReader();
-                    while (reportTypes.Read())
+                    if (reportType == null)
                     {
-                        string id = reportTypes.GetField<string>("id");
-                        var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
+                        reportType = new ReportType();
+                        activeReportTypes[id] = new WeakReference<ReportType>(reportType);
 
-                        if (reportType == null)
-                        {
-                            reportType = new ReportType();
-                            activeReportTypes[id] = new WeakReference<ReportType>(reportType);
-
-                            reportType.id = id;
-                            reportType.category = Util.EnumParse<ReportCategory>(reportTypes.GetField<string>("category"));
-                        }
-
-                        result.Add(reportType);
+                        ReadReportTypeFromReader(reportTypes, reportType);
                     }
-                    reportTypes.Close();
 
-                    transaction.Rollback();
-
-                    return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
+                    result.Add(reportType);
                 }
+                reportTypes.Close();
+
+                return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
             }
+        }
+
+        private void ReadReportTypeFromReader(SQLiteDataReader reader, ReportType reportType)
+        {
+            reportType.id = reader.GetField<string>("id");
+            reportType.category = Util.EnumParse<ReportCategory>(reader.GetField<string>("category"));
         }
 
         public void UpdateReportTypeCategory(ReportType reportType, ReportCategory category)
