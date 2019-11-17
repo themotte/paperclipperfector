@@ -71,6 +71,19 @@ namespace PaperclipPerfector
                 public ReportType reason;
                 public long count;
             }
+
+            public long ReportsOfCategory(ReportCategory category)
+            {
+                long count = 0;
+                for (int i = 0; i < reports.Length; ++i)
+                {
+                    if (reports[i].reason.category == category)
+                    {
+                        count += reports[i].count;
+                    }
+                }
+                return count;
+            }
         }
 
         public enum ReportCategory

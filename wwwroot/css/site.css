@@ -234,6 +234,17 @@ app {
   float: left;
   width: 10rem;
 }
+  .rw-votes>span {
+      padding-right: 0.5rem;
+  }
+
+  .rw-votes .positive {
+      color: #080;
+  }
+
+  .rw-votes .negative {
+    color: #800;
+  }
 
 .rw-timestamp {
   float: left;
