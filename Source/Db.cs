@@ -25,6 +25,7 @@ namespace PaperclipPerfector
         private SQLiteCommand updateReportType;
 
         private SQLiteCommand readReportTypes;
+        private SQLiteCommand readUnassignedReportTypes;
 
         private HashSet<Action> callbacks = new HashSet<Action>();
         private Dictionary<string, WeakReference<Post>> activePosts = new Dictionary<string, WeakReference<Post>>();
@@ -111,6 +112,7 @@ namespace PaperclipPerfector
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
 
             readReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes", dbConnection);
+            readUnassignedReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE category = 'Unassigned'", dbConnection);
         }
 
         public void RegisterCallback(Action callback)
@@ -336,6 +338,14 @@ namespace PaperclipPerfector
 
                 TriggerCallbacks();
             }
+        }
+
+        public bool HasUnassignedReportTypes()
+        {
+            var reader = readUnassignedReportTypes.ExecuteReader();
+            bool result = reader.Read();
+            reader.Close();
+            return result;
         }
     }
 }
