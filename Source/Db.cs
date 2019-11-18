@@ -248,7 +248,7 @@ namespace PaperclipPerfector
             {
                 ["id"] = id,
             });
-            postDb.NextResult();
+            postDb.Read();
 
             ReadPostFromReader(postDb, post);
 
