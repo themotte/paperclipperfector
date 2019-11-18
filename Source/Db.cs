@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
+using System.Web;
 
 namespace PaperclipPerfector
 {
@@ -156,19 +157,19 @@ namespace PaperclipPerfector
                 {
                     insertPost.ExecuteNonQuery(new Dictionary<string, object>()
                     {
-                        ["id"] = post.id,
+                        ["id"] = post.name,
                         ["author"] = post.author,
-                        ["html"] = post.body_html,
+                        ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.UrlEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
                         ["ups"] = post.ups,
                         ["permalink"] = post.permalink,
                         ["timestamp"] = post.created_utc,
-                        ["title"] = post.link_title,
+                        ["title"] = post.link_title ?? "",
                         ["state"] = PostState.Pending.ToString(),
                     });
 
                     clearReports.ExecuteNonQuery(new Dictionary<string, object>()
                     {
-                        ["postId"] = post.id,
+                        ["postId"] = post.name,
                     });
 
                     foreach (var report in post.Reports)
@@ -180,7 +181,7 @@ namespace PaperclipPerfector
 
                         insertReport.ExecuteNonQuery(new Dictionary<string, object>()
                         {
-                            ["postId"] = post.id,
+                            ["postId"] = post.name,
                             ["reportTypeId"] = report.reason,
                             ["count"] = report.count,
                         });
@@ -190,7 +191,7 @@ namespace PaperclipPerfector
                     transaction.Commit();
                 }
 
-                UpdateActivePost(post.id);
+                UpdateActivePost(post.name);
             }
         }
 
