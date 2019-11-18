@@ -1,10 +1,10 @@
 
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-using Newtonsoft.Json;
 
 namespace PaperclipPerfector
 {
@@ -114,31 +114,54 @@ namespace PaperclipPerfector
 
         public IEnumerable<Post> Reports()
         {
-            var result = SendRequest<Item<Listing<Post>>>("about/reports", null);
-
-            return result.data.children.Select(item => item.data);
+            return StandardListing<Post>("about/reports");
         }
 
-        private T SendRequest<T>(string url, object request)
+        private class ListingRequest
         {
-            string requestSerialized = null;
-            if (request is string)
+            public string after;
+        }
+        public IEnumerable<T> StandardListing<T>(string url)
+        {
+            string after = null;
+
+            while (true)
             {
-                requestSerialized = request as string;
+                var result = SendRequest<Item<Listing<T>>>(url, new Dictionary<string, string> { ["after"] = after });
+                if (result.data == null)
+                {
+                    break;
+                }
+
+                foreach (var element in result.data.children)
+                {
+                    yield return element.data;
+                }
+
+                after = result.data.after;
+                if (after == "" || after == null)
+                {
+                    break;
+                }
             }
-            else if (request != null)
+            
+        }
+
+        private T SendRequest<T>(string url, Dictionary<string, string> input)
+        {
+            if (input == null)
             {
-                requestSerialized = JsonConvert.SerializeObject(request);
+                input = new Dictionary<string, string>();
             }
 
-            string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}?raw_json=1";
-            var requestContent = request != null ? new StringContent(requestSerialized, Encoding.UTF8, "application/json") : null;
-            var method = requestContent != null ? HttpMethod.Post : HttpMethod.Get;
+            input["raw_json"] = "1";
+
+            string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}?" + string.Join("&", input.Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));
             if (verbose)
             {
-                Dbg.Inf($"{method} {uri}: {requestSerialized}");
+                Dbg.Inf($"Request: {uri}");
             }
-            var message = new HttpRequestMessage(requestContent != null ? HttpMethod.Post : HttpMethod.Get, uri);
+            var message = new HttpRequestMessage(HttpMethod.Get, uri);
 
             //message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue();
 
