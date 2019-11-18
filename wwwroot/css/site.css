@@ -316,6 +316,8 @@ app {
 
 .rtw-actions {
   text-align: right;
+  white-space: nowrap;
+  margin: auto 0px auto 0px;
 }
 
 .reporttypebutton-positive {
