@@ -121,7 +121,7 @@ namespace PaperclipPerfector
             updatePostState = new SQLiteCommand("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
 
             readPost = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
-            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = 'Pending' AND reportTypes.category = 'Positive'", dbConnection);
+            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive'", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
