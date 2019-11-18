@@ -134,7 +134,7 @@ namespace PaperclipPerfector
                     }
 
                     var numeric_reports_computed = numeric_reports.Select(raw => new Report() { reason = raw[0] ?? "", count = int.Parse(raw[1]) });
-                    var tagged_reports_computed = tagged_reports.Select(raw => new Report() { reason = $"{raw[0]}: {raw[1]}", count = 1 });
+                    var tagged_reports_computed = tagged_reports.Select(raw => new Report() { reason = $"{raw[1]}: {raw[0]}", count = 1 });
 
                     return numeric_reports_computed.Concat(tagged_reports_computed);
                 }
