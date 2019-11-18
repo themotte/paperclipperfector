@@ -190,6 +190,7 @@ app {
 
 .post {
   width: 100%;
+  max-width: 60rem;
   margin-bottom: 2rem;
   padding: 1rem;
   border-style: solid;
