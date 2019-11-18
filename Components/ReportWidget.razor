@@ -1,39 +1,43 @@
 <div class="reportwidget">
-    <div class="rw-permalink"><a href="@($"https://www.reddit.com{post.link}?context=3")">@post.id</a></div>
-    <div class="rw-title">@post.title</div>
-    <div class="rw-votes">
-        @if (post.ups > 0)
-        {
-            <span class="positive">+@post.ups</span>
-        }
-        else if (post.ups == 0)
-        {
-            <span>@post.ups</span>
-        }
-        else
-        {
-            <span class="negative">@post.ups</span>
-        }
-
-        @if (post.ReportsOfCategory(Db.ReportCategory.Positive) > 0)
-        {
-            <span class="positive"><span class="oi oi-caret-top" aria-hidden="true" /> @post.ReportsOfCategory(Db.ReportCategory.Positive)</span>
-        }
-
-        @if (post.ReportsOfCategory(Db.ReportCategory.Negative) > 0)
-        {
-            <span class="negative"><span class="oi oi-caret-bottom" aria-hidden="true" /> @post.ReportsOfCategory(Db.ReportCategory.Negative)</span>
-        }
+    <div class="rw-line">
+        <div class="rw-permalink"><a href="@($"https://www.reddit.com{post.link}?context=3")">@post.id</a></div>
+        <div class="rw-title">@post.title</div>
     </div>
-    <div class="rw-timestamp">@post.creation</div>
-    <div class="rw-author"><a href="@($"https://www.reddit.com/user/{post.author}")">@post.author</a></div>
-    <div class="rw-actions">
-        @if (controls)
-        {
-            <ReportButton post="@post" action="@Db.PostState.Rejected" />
-            <ReportButton post="@post" action="@Db.PostState.Pending" />
-            <ReportButton post="@post" action="@Db.PostState.Approved" />
-        }
+    <div class="rw-line">
+        <div class="rw-votes">
+            @if (post.ups > 0)
+            {
+                <span class="positive">+@post.ups</span>
+            }
+            else if (post.ups == 0)
+            {
+                <span>@post.ups</span>
+            }
+            else
+            {
+                <span class="negative">@post.ups</span>
+            }
+
+            @if (post.ReportsOfCategory(Db.ReportCategory.Positive) > 0)
+            {
+                <span class="positive"><span class="oi oi-caret-top" aria-hidden="true" /> @post.ReportsOfCategory(Db.ReportCategory.Positive)</span>
+            }
+
+            @if (post.ReportsOfCategory(Db.ReportCategory.Negative) > 0)
+            {
+                <span class="negative"><span class="oi oi-caret-bottom" aria-hidden="true" /> @post.ReportsOfCategory(Db.ReportCategory.Negative)</span>
+            }
+        </div>
+        <div class="rw-timestamp">@post.creation</div>
+        <div class="rw-author"><a href="@($"https://www.reddit.com/user/{post.author}")">@post.author</a></div>
+        <div class="rw-actions">
+            @if (controls)
+            {
+                <ReportButton post="@post" action="@Db.PostState.Rejected" />
+                <ReportButton post="@post" action="@Db.PostState.Pending" />
+                <ReportButton post="@post" action="@Db.PostState.Approved" />
+            }
+        </div>
     </div>
     <div class="rw-reports">
         @foreach (var report in post.reports)
