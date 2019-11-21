@@ -29,6 +29,9 @@ namespace PaperclipPerfector
         private SQLiteCommand readReportTypes;
         private SQLiteCommand readUnassignedReportTypes;
 
+        private SQLiteCommand readGlobalProp;
+        private SQLiteCommand writeGlobalProp;
+
         private HashSet<Action> callbacks = new HashSet<Action>();
         private Dictionary<string, WeakReference<Post>> activePosts = new Dictionary<string, WeakReference<Post>>();
         private Dictionary<string, WeakReference<ReportType>> activeReportTypes = new Dictionary<string, WeakReference<ReportType>>();
@@ -111,6 +114,7 @@ namespace PaperclipPerfector
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT NOT NULL, html TEXT NOT NULL, ups INTEGER NOT NULL, permalink TEXT NOT NULL, timestamp INTEGER NOT NULL, title TEXT NOT NULL, state TEXT NOT NULL)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, category TEXT NOT NULL)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT NOT NULL, reportTypeId TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(postId, reportTypeId))");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS globalProps (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
 
             // Init commands
             insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
@@ -129,6 +133,9 @@ namespace PaperclipPerfector
             readReportType = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
             readReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes", dbConnection);
             readUnassignedReportTypes = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE category = 'Unassigned'", dbConnection);
+
+            readGlobalProp = new SQLiteCommand("SELECT value FROM globalProps WHERE key = @key", dbConnection);
+            writeGlobalProp = new SQLiteCommand("INSERT INTO globalProps(key, value) VALUES(@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value", dbConnection);
         }
 
         public void RegisterCallback(Action callback)
@@ -386,6 +393,33 @@ namespace PaperclipPerfector
             bool result = reader.Read();
             reader.Close();
             return result;
+        }
+
+        public string ReadGlobalProp(string key)
+        {
+            var reader = readGlobalProp.ExecuteReader(new Dictionary<string, object>
+            {
+                ["key"] = key,
+            });
+
+            string result = null;
+            if (reader.Read())
+            {
+                result = reader.GetField<string>("value");
+            }
+
+            reader.Close();
+
+            return result;
+        }
+
+        public void WriteGlobalProp(string key, string value)
+        {
+            writeGlobalProp.ExecuteNonQuery(new Dictionary<string, object>
+            {
+                ["key"] = key,
+                ["value"] = value,
+            });
         }
     }
 }
