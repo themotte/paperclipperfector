@@ -47,6 +47,8 @@ namespace PaperclipPerfector
         }
         private void RefreshAccessToken()
         {
+            Dbg.Inf("Refreshing access token . . .");
+
             var message = new HttpRequestMessage(HttpMethod.Post, "https://www.reddit.com/api/v1/access_token");
             message.Headers.Add("Authorization", "Basic " + System.Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Config.Instance.appId}:{Config.Instance.appSecret}")));
 
@@ -272,6 +274,13 @@ namespace PaperclipPerfector
             }
 
             var result = client.SendAsync(message).Result;
+
+            if (result.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                // We've probably just had our access token time out; try again
+                RefreshAccessToken();
+                return SendRequest<T>(url, input);
+            }
 
             if (result.StatusCode != HttpStatusCode.OK)
             {
