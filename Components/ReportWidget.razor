@@ -1,5 +1,9 @@
 <div class="reportwidget">
     <div class="rw-line">
+        @if (selection != null)
+        {
+            <div class="rw-selection"><input type="checkbox" @bind="@selected" /></div>
+        }
         <div class="rw-permalink"><a href="@($"https://www.reddit.com{post.link}?context=3")">@post.id</a></div>
         <div class="rw-title">@post.title</div>
     </div>
@@ -49,6 +53,29 @@
 </div>
 
 @code {
+    [Parameter] public Action<bool> selection { get; set; }
     [Parameter] public bool controls { get; set; }
     [Parameter] public Db.Post post { get; set; }
+
+    bool _selected = true;
+    public bool selected
+    {
+        get
+        {
+            return _selected;
+        }
+        set
+        {
+            _selected = value;
+            selection(value);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (selection != null)
+        {
+            selection(_selected);
+        }
+    }
 }

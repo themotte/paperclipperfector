@@ -1,9 +1,18 @@
 @implements IDisposable
 
+@if (HasPostButton)
+{
+    <div class="postbutton-container">
+        <button class="button postbutton" @onclick="MakePost">
+            Make a new post
+        </button>
+    </div>
+}
+
 @foreach (var post in posts)
 {
     <div class="post">
-        <ReportWidget post="@post" />
+        <ReportWidget post="@post" selection="@(active => SetSelection(post.id, active))" />
         <div class="body">@((MarkupString)post.html)</div>
         <ReportWidget post="@post" controls="true" />
     </div>
@@ -13,6 +22,12 @@
     [Parameter] public Db.PostState segment { get; set; }
 
     private Db.Post[] posts = null;
+    private HashSet<string> activeSelection = new HashSet<string>();
+
+    public bool HasPostButton
+    {
+        get => segment == Db.PostState.Approved;
+    }
 
     protected override void OnParametersSet()
     {
@@ -29,5 +44,32 @@
     public void Dispose()
     {
         Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
+    }
+
+    public void SetSelection(string id, bool active)
+    {
+        if (active)
+        {
+            activeSelection.Add(id);
+        }
+        else
+        {
+            activeSelection.Remove(id);
+        }
+    }
+
+    public void MakePost()
+    {
+        Dbg.Inf($"Active selection is {activeSelection.Count}");
+        
+        posts = new Db.Post[0];
+
+        // Update with a spinner?
+
+        // Do the DB change
+
+        // Generate post text
+
+        // Do the actual post
     }
 }

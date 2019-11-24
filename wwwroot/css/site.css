@@ -186,6 +186,28 @@ app {
     }
 }
 
+.button {
+  border-style: solid;
+  border-radius: 5px;
+  border-width: 1px;
+  border-color: #bbb;
+  padding: 0.2rem;
+  margin: 0.1rem;
+  text-align: center;
+}
+
+.postbutton-container {
+  width: 100%;
+  max-width: 60rem;
+  text-align: center;
+}
+
+.postbutton {
+  margin: 1rem;
+  padding: 0.5rem 1rem 0.5rem 1rem;
+  background-color: #efe;
+}
+
 /* Report widget */
 
 .post {
@@ -228,6 +250,11 @@ app {
     width: 100%;
 }
 
+.rw-selection {
+  float: left;
+  margin-right: 0.3rem;
+}
+
 .rw-permalink {
   float: left;
 }
@@ -268,16 +295,6 @@ app {
     float: right;
     text-align: right;
     margin: 0.1rem;
-}
-
-.button {
-  border-style: solid;
-  border-radius: 5px;
-  border-width: 1px;
-  border-color: #bbb;
-  padding: 0.2rem;
-  margin: 0.1rem;
-  text-align: center;
 }
 
 .reportbutton-approved {
