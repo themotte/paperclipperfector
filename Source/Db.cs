@@ -23,7 +23,8 @@ namespace PaperclipPerfector
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
-        private SQLiteCommand finalizePost;
+        private SQLiteCommand finalizePostUpdate;
+        private SQLiteCommand finalizePostCommit;
         private SQLiteCommand updateReportType;
 
         private SQLiteCommand readReportType;
@@ -118,6 +119,7 @@ namespace PaperclipPerfector
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, category TEXT NOT NULL)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT NOT NULL, reportTypeId TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(postId, reportTypeId))");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS globalProps (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS postChunks (timestamp TEXT NOT NULL, id TEXT NOT NULL)");
 
             // Init commands
             insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups", dbConnection);
@@ -131,7 +133,8 @@ namespace PaperclipPerfector
             readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
-            finalizePost = new SQLiteCommand("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
+            finalizePostUpdate = new SQLiteCommand("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
+            finalizePostCommit = new SQLiteCommand("INSERT INTO postChunks(timestamp, id) VALUES(@timestamp, @id)", dbConnection);
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
 
             readReportType = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
@@ -428,14 +431,14 @@ namespace PaperclipPerfector
             });
         }
 
-        public bool MoveToPosted(IEnumerable<string> ids)
+        public bool MoveToPosted(IEnumerable<string> ids, DateTimeOffset timestamp)
         {
             using (var transaction = dbConnection.BeginTransaction())
             {
                 bool failed = false;
                 foreach (var id in ids)
                 {
-                    using (var updated = finalizePost.ExecuteReader(new Dictionary<string, object> { ["id"] = id }))
+                    using (var updated = finalizePostUpdate.ExecuteReader(new Dictionary<string, object> { ["id"] = id }))
                     {
                         if (updated.RecordsAffected != 1)
                         {
@@ -444,6 +447,8 @@ namespace PaperclipPerfector
                             break;
                         }
                     }
+
+                    finalizePostCommit.ExecuteNonQuery(new Dictionary<string, object> { ["id"] = id, ["timestamp"] = timestamp.ToUnixTimeSeconds() });
                 }
 
                 if (failed)

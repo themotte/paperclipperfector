@@ -70,7 +70,7 @@
         // Update with a spinner?
 
         // Do the DB change
-        if (!Db.Instance.MoveToPosted(activeSelection) || true)
+        if (!Db.Instance.MoveToPosted(activeSelection, DateTimeOffset.Now) || true)
         {
             Dbg.Err("whoops no");
             return;
