@@ -284,9 +284,10 @@ namespace PaperclipPerfector
 
             if (result.StatusCode != HttpStatusCode.OK)
             {
-                // Yeah this is gonna break stuff.
+                // Just try again later I guess
                 Dbg.Err($"{uri}: {result.StatusCode}");
-                return default;
+                Thread.Sleep(TimeSpan.FromSeconds(15));
+                return SendRequest<T>(url, input);
             }
 
             var content = result.Content.ReadAsStringAsync().Result;
