@@ -49,29 +49,44 @@ namespace PaperclipPerfector
         {
             Dbg.Inf("Refreshing access token . . .");
 
-            var message = new HttpRequestMessage(HttpMethod.Post, "https://www.reddit.com/api/v1/access_token");
-            message.Headers.Add("Authorization", "Basic " + System.Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Config.Instance.appId}:{Config.Instance.appSecret}")));
-
-            var contentDict = new Dictionary<string, string>
+            while (true)
             {
-                ["grant_type"] = "refresh_token",
-                ["refresh_token"] = Config.Instance.refreshToken,
-            };
+                try
+                {
+                    var message = new HttpRequestMessage(HttpMethod.Post, "https://www.reddit.com/api/v1/access_token");
+                    message.Headers.Add("Authorization", "Basic " + System.Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Config.Instance.appId}:{Config.Instance.appSecret}")));
 
-            var formData = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("grant_type", "refresh_token"),
-                new KeyValuePair<string, string>("refresh_token", Config.Instance.refreshToken),
-            });
+                    var contentDict = new Dictionary<string, string>
+                    {
+                        ["grant_type"] = "refresh_token",
+                        ["refresh_token"] = Config.Instance.refreshToken,
+                    };
 
-            message.Content = formData;
+                    var formData = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("grant_type", "refresh_token"),
+                        new KeyValuePair<string, string>("refresh_token", Config.Instance.refreshToken),
+                    });
 
-            var result = accessClient.SendAsync(message).Result;
-            var content = result.Content.ReadAsStringAsync().Result;
+                    message.Content = formData;
 
-            var response = JsonConvert.DeserializeObject<AccessTokenResponse>(content);
-            client.DefaultRequestHeaders.Remove("Authorization");
-            client.DefaultRequestHeaders.Add("Authorization", $"bearer {response.access_token}");
+                    var result = accessClient.SendAsync(message).Result;
+                    var content = result.Content.ReadAsStringAsync().Result;
+
+                    var response = JsonConvert.DeserializeObject<AccessTokenResponse>(content);
+                    client.DefaultRequestHeaders.Remove("Authorization");
+                    client.DefaultRequestHeaders.Add("Authorization", $"bearer {response.access_token}");
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Dbg.Ex(ex);
+
+                    // This is probably Reddit freaking out. Try again later . . .
+                    Thread.Sleep(15);
+                }
+            }
         }
 
         private class Item<T>
