@@ -23,6 +23,7 @@ namespace PaperclipPerfector
         private SQLiteCommand readPosts;
         private SQLiteCommand readReportsFor;
 
+        private SQLiteCommand finalizePost;
         private SQLiteCommand updateReportType;
 
         private SQLiteCommand readReportType;
@@ -55,6 +56,7 @@ namespace PaperclipPerfector
             Pending,
             Approved,
             Rejected,
+            Posted,
         }
 
         public class Post
@@ -129,6 +131,7 @@ namespace PaperclipPerfector
             readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
+            finalizePost = new SQLiteCommand("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
 
             readReportType = new SQLiteCommand("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
@@ -423,6 +426,36 @@ namespace PaperclipPerfector
                 ["key"] = key,
                 ["value"] = value,
             });
+        }
+
+        public bool MoveToPosted(IEnumerable<string> ids)
+        {
+            using (var transaction = dbConnection.BeginTransaction())
+            {
+                bool failed = false;
+                foreach (var id in ids)
+                {
+                    using (var updated = finalizePost.ExecuteReader(new Dictionary<string, object> { ["id"] = id }))
+                    {
+                        if (updated.RecordsAffected != 1)
+                        {
+                            failed = true;
+
+                            break;
+                        }
+                    }
+                }
+
+                if (failed)
+                {
+                    transaction.Rollback();
+                    return false;
+                }
+
+                transaction.Commit();
+            }
+
+            return true;
         }
     }
 }

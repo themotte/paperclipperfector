@@ -30,6 +30,16 @@ namespace PaperclipPerfector
             return command.ExecuteReader();
         }
 
+        public static object ExecuteScalar(this SQLiteCommand command, IEnumerable<KeyValuePair<string, object>> parameters)
+        {
+            command.Parameters.Clear();
+            if (parameters != null)
+            {
+                command.Parameters.AddRange(parameters.Select(kvp => new SQLiteParameter(kvp.Key, kvp.Value)).ToArray());
+            }
+            return command.ExecuteScalar();
+        }
+
         public static T GetField<T>(this SQLiteDataReader reader, string label)
         {
             // Inefficient, but right now I don't care.
