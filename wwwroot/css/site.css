@@ -208,6 +208,10 @@ app {
   background-color: #efe;
 }
 
+.postbutton.failure {
+    background-color: #fee;
+}
+
 .finaltext {
     width: 100%;
     max-width: 60rem;

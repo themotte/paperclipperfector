@@ -3,8 +3,8 @@
 @if (HasPostButton && postText == null)
 {
     <div class="postbutton-container">
-        <button class="button postbutton" @onclick="MakePost">
-            Make a new post
+        <button class="button postbutton @(failureText != null ? "failure" : "")" @onclick="MakePost">
+            @(failureText ?? "Make a new post")
         </button>
     </div>
 }
@@ -30,6 +30,7 @@
     private HashSet<string> activeSelection = new HashSet<string>();
 
     private string postText = null;
+    private string failureText = null;
 
     public bool HasPostButton
     {
@@ -67,12 +68,16 @@
 
     public void MakePost()
     {
-        // Update with a spinner?
+        if (failureText != null)
+        {
+            // no.
+            return;
+        }
 
         // Do the DB change
         if (!Db.Instance.MoveToPosted(activeSelection, DateTimeOffset.Now) || true)
         {
-            Dbg.Err("whoops no");
+            failureText = "Something went wrong; refresh and try again";
             return;
         }
 
