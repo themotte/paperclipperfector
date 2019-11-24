@@ -208,8 +208,13 @@ app {
   background-color: #efe;
 }
 
-/* Report widget */
+.finaltext {
+    width: 100%;
+    max-width: 60rem;
+    height: 30rem;
+}
 
+/* Report widget */
 .post {
   width: 100%;
   max-width: 60rem;

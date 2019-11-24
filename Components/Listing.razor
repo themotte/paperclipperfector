@@ -1,6 +1,6 @@
 @implements IDisposable
 
-@if (HasPostButton)
+@if (HasPostButton && postText == null)
 {
     <div class="postbutton-container">
         <button class="button postbutton" @onclick="MakePost">
@@ -18,11 +18,18 @@
     </div>
 }
 
+@if (postText != null)
+{
+    <textarea class="finaltext">@postText</textarea>
+}
+
 @code {
     [Parameter] public Db.PostState segment { get; set; }
 
     private Db.Post[] posts = null;
     private HashSet<string> activeSelection = new HashSet<string>();
+
+    private string postText = null;
 
     public bool HasPostButton
     {
@@ -60,16 +67,27 @@
 
     public void MakePost()
     {
-        Dbg.Inf($"Active selection is {activeSelection.Count}");
-        
-        posts = new Db.Post[0];
-
         // Update with a spinner?
 
         // Do the DB change
 
         // Generate post text
+        string result = "";
+        foreach (var post in posts.Where(post => activeSelection.Contains(post.id)))
+        {
+            IEnumerable<string> lines = post.text.Split("\n").Where(line => !line.StartsWith(">"));
+            string text = string.Join(" ", lines);
+            IEnumerable<string> words = text.Split(new char[] {' ', '\n', '\t'}).Where(word => word.Length > 0);
+            string blurb = string.Join(" ", words.Take(20));    // TODO: split it based on character count, not word count?
 
-        // Do the actual post
+            result += $"/u/{post.author}: \"{blurb}...\" ([link]({post.link}?context=3&sort=best))  \n";
+        }
+
+        postText = result;
+
+        // Clear it out!
+        posts = new Db.Post[0];
+
+        StateHasChanged();
     }
 }
