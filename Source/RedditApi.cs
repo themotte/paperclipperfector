@@ -108,6 +108,7 @@ namespace PaperclipPerfector
             public string author;
             public int ups;
             public string body_html;
+            public string body;
             public string permalink;
             public long created_utc;
             public string link_title;

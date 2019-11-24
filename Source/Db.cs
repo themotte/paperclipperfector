@@ -63,6 +63,7 @@ namespace PaperclipPerfector
             public string author;
             public long ups;
             public string html;
+            public string text;
             public string link;
             public string title;
             public DateTimeOffset creation;
@@ -111,21 +112,21 @@ namespace PaperclipPerfector
             dbConnection.Open();
 
             // Init rows
-            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT NOT NULL, html TEXT NOT NULL, ups INTEGER NOT NULL, permalink TEXT NOT NULL, timestamp INTEGER NOT NULL, title TEXT NOT NULL, state TEXT NOT NULL)");
+            dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, author TEXT NOT NULL, html TEXT NOT NULL, text TEXT NOT NULL, ups INTEGER NOT NULL, permalink TEXT NOT NULL, timestamp INTEGER NOT NULL, title TEXT NOT NULL, state TEXT NOT NULL)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reportTypes (id TEXT PRIMARY KEY, category TEXT NOT NULL)");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS reports (postId TEXT NOT NULL, reportTypeId TEXT NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(postId, reportTypeId))");
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS globalProps (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
 
             // Init commands
-            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, ups=excluded.ups", dbConnection);
+            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups", dbConnection);
             insertReportType = new SQLiteCommand($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
             clearReports = new SQLiteCommand("DELETE FROM reports WHERE postId = @postId", dbConnection);
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
             updatePostState = new SQLiteCommand("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
 
-            readPost = new SQLiteCommand("SELECT id, author, html, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
-            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
+            readPost = new SQLiteCommand("SELECT id, author, html, text, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
+            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
             updateReportType = new SQLiteCommand("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
@@ -167,6 +168,7 @@ namespace PaperclipPerfector
                         ["id"] = post.name,
                         ["author"] = post.author,
                         ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
+                        ["text"] = post.body ?? $"HttpUtility.HtmlEncode(post.url)",
                         ["ups"] = post.ups,
                         ["permalink"] = post.permalink,
                         ["timestamp"] = post.created_utc,
@@ -269,6 +271,7 @@ namespace PaperclipPerfector
             post.id = reader.GetField<string>("id");
             post.author = reader.GetField<string>("author");
             post.html = reader.GetField<string>("html");
+            post.text = reader.GetField<string>("text");
             post.ups = reader.GetField<long>("ups");
             post.link = reader.GetField<string>("permalink");
             post.title = reader.GetField<string>("title");
