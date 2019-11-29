@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.IO;
 using System.Linq;
 using System.Web;
 
@@ -111,7 +112,7 @@ namespace PaperclipPerfector
         public Db()
         {
             // Init DB
-            dbConnection = new SQLiteConnection("Data Source=db.sqlite");
+            dbConnection = new SQLiteConnection($"Data Source={Path.Join(Config.Datamount, "db.sqlite")}");
             dbConnection.Open();
 
             // Init rows

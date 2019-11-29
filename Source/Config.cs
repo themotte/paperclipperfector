@@ -1,5 +1,6 @@
 
 using Newtonsoft.Json;
+using System;
 using System.IO;
 
 namespace PaperclipPerfector
@@ -22,10 +23,18 @@ namespace PaperclipPerfector
             {
                 if (StoredInstance == null)
                 {
-                    StoredInstance = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
+                    StoredInstance = JsonConvert.DeserializeObject<Config>(File.ReadAllText(Path.Join(Datamount, "config.json")));
                 }
 
                 return StoredInstance;
+            }
+        }
+
+        public static string Datamount
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("PPDATAMOUNT") ?? ".";
             }
         }
     }
