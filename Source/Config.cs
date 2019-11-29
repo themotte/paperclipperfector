@@ -13,6 +13,8 @@ namespace PaperclipPerfector
 
         public string subreddit;
 
+        public string password;
+
         private static Config StoredInstance;
         public static Config Instance
         {

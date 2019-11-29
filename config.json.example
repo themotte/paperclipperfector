@@ -3,5 +3,6 @@
     "appSecret": "1zPff6Fy1RuN68UrJkrc0hxg",
     "refreshToken": "626775793947-JNnrKURHah2wq8dzZjm63Av9Ec4",
 
-    "subreddit": "catpictures"
+    "subreddit": "catpictures",
+    "password": "AVerySecurePassword"
 }

@@ -1,5 +1,28 @@
-﻿@page "/"
+@page "/"
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<h1>Hello, world!</h1>
+<h1>Welcome to the Paperclip Perfector!</h1>
 
-Welcome to your new app.
+<p>
+    First, type in your password here:
+    <input type="text" @bind-value="@password">
+    <button type="submit" @onclick="SubmitPassword">Submit</button>
+</p>
+
+<p>The "Report types" tab can be used to define whether reports are positive, neutral, or negative. You won't see posts in Pending unless they have at least one positive report. Negative is just used to show a counter; Neutral is effectively ignored. I recommend using "neutral" for reports that aren't actual rule violations, and "negative".</p>
+
+<p>The "Pending posts" tab includes only posts that are currently waiting for approval or rejection. I recommend rejecting things that definitely don't qualify and approving things that might qualfy.</p>
+
+<p>When it's time to make an actual post, go into "Approved posts". Reject anything that, on second thought, you think isn't deserving. If you want to make a post including only a subset of the currently-approved posts, you can use the checkboxes to remove posts from the list. Otherwise, hit the big green button, copy-paste the text into Reddit, and you're done!</p>
+
+@code {
+    string password = "";
+
+    void SubmitPassword()
+    {
+        if (password == Config.Instance.password)
+        {
+            (AuthenticationStateProvider as AuthStateProvider).SetAuthorized(true);
+        }
+    }
+}
