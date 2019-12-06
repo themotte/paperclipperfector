@@ -15,7 +15,7 @@ namespace PaperclipPerfector
                 new Claim(ClaimTypes.Name, "[unknown username]"),
             }, "Fake authentication type");
 
-            if (isAuthorized)
+            if (isAuthorized || Config.Instance.password == "")
             {
                 identity.AddClaim(new Claim(ClaimTypes.Role, "moderator"));
             }
