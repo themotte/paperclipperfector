@@ -20,12 +20,12 @@
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="pending">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Pending posts
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Pending posts (@(Db.Instance.ReadAllPosts(Db.PostState.Pending).Count()))
                 </NavLink>
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="approved">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Approved posts
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Approved posts (@(Db.Instance.ReadAllPosts(Db.PostState.Approved).Count()))
                 </NavLink>
             </li>
             <br />
@@ -42,6 +42,22 @@
     private bool collapseNavMenu = true;
 
     private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override void OnParametersSet()
+    {
+        Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
+    } 
+    
+    public void Dispose()
+    {
+        Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
+    }
+
+    public void StateHasChangedThreadsafe()
+    {
+        // This matters just for the post count and nothing else. There's probably a better way to do this.
+        InvokeAsync(StateHasChanged).ContinueInBackground();
+    }
 
     private void ToggleNavMenu()
     {
