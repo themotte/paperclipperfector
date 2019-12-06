@@ -90,7 +90,13 @@
             IEnumerable<string> words = text.Split(new char[] {' ', '\n', '\t'}).Where(word => word.Length > 0);
             string blurb = string.Join(" ", words.Take(20));    // TODO: split it based on character count, not word count?
 
-            result += $"/u/{post.author}: \"{blurb}...\" ([link]({post.link}?context=3&sort=best))  \n";
+            string flavor = post.flavorTitle;
+            if (flavor == "")
+            {
+                flavor = blurb;
+            }
+
+            result += $"/u/{post.author}: [{flavor}]({post.link}?context=3&sort=best)  \n";
         }
 
         postText = result;

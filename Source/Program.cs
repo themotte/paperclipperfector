@@ -11,6 +11,7 @@ namespace PaperclipPerfector
         {
             // Init
             var db = Db.Instance;
+            db.UpdateSchema();
 
             new Thread(new RedditScraper().Main).Start();
 

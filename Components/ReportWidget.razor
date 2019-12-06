@@ -41,6 +41,10 @@
                 <ReportButton post="@post" action="@Db.PostState.Pending" />
                 <ReportButton post="@post" action="@Db.PostState.Approved" />
             }
+            else
+            {
+                <input type="text" @bind-value="@flavorTitle">
+            }
         </div>
     </div>
     <div class="rw-reports">
@@ -56,6 +60,18 @@
     [Parameter] public Action<bool> selection { get; set; }
     [Parameter] public bool controls { get; set; }
     [Parameter] public Db.Post post { get; set; }
+
+    string flavorTitle
+    {
+        get
+        {
+            return post.flavorTitle;
+        }
+        set
+        {
+            Db.Instance.UpdateFlavorTitle(post, value);
+        }
+    }
 
     bool _selected = true;
     public bool selected

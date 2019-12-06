@@ -19,6 +19,7 @@ namespace PaperclipPerfector
         private SQLiteCommand insertReport;
 
         private SQLiteCommand updatePostState;
+        private SQLiteCommand updateFlavorTitle;
 
         private SQLiteCommand readPost;
         private SQLiteCommand readPosts;
@@ -71,6 +72,8 @@ namespace PaperclipPerfector
             public string link;
             public string title;
             public DateTimeOffset creation;
+
+            public string flavorTitle;
             public PostState state;
 
             public Report[] reports;
@@ -129,9 +132,10 @@ namespace PaperclipPerfector
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
             updatePostState = new SQLiteCommand("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
+            updateFlavorTitle = new SQLiteCommand("UPDATE posts SET flavorTitle = @flavorTitle WHERE id = @id", dbConnection);
 
-            readPost = new SQLiteCommand("SELECT id, author, html, text, ups, permalink, timestamp, title, state FROM posts WHERE id = @id", dbConnection);
-            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
+            readPost = new SQLiteCommand("SELECT id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts WHERE id = @id", dbConnection);
+            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
             finalizePostUpdate = new SQLiteCommand("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
@@ -144,6 +148,21 @@ namespace PaperclipPerfector
 
             readGlobalProp = new SQLiteCommand("SELECT value FROM globalProps WHERE key = @key", dbConnection);
             writeGlobalProp = new SQLiteCommand("INSERT INTO globalProps(key, value) VALUES(@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value", dbConnection);
+        }
+
+        public void UpdateSchema()
+        {
+            if (GlobalProps.Instance.dbVersion.Value == 1)
+            {
+                // Update to v2 - add a flavorTitle field to posts
+                dbConnection.ExecuteNonQuery("ALTER TABLE posts ADD flavorTitle NOT NULL DEFAULT ''");
+                GlobalProps.Instance.dbVersion.Value = 2;
+            }
+
+            if (GlobalProps.Instance.dbVersion.Value != 2)
+            {
+                Dbg.Err("Database error! Something is very wrong!");
+            }
         }
 
         public void RegisterCallback(Action callback)
@@ -282,8 +301,10 @@ namespace PaperclipPerfector
             post.ups = reader.GetField<long>("ups");
             post.link = reader.GetField<string>("permalink");
             post.title = reader.GetField<string>("title");
+            
             post.creation = DateTimeOffset.FromUnixTimeSeconds(reader.GetField<long>("timestamp"));
             post.state = Util.EnumParse<PostState>(reader.GetField<string>("state"));
+            post.flavorTitle = reader.GetField<string>("flavorTitle");
 
             var reports = new List<Post.Report>();
             var reportReader = readReportsFor.ExecuteReader(new Dictionary<string, object>()
@@ -314,6 +335,22 @@ namespace PaperclipPerfector
                 });
 
                 post.state = state;
+
+                TriggerCallbacks();
+            }
+        }
+
+        public void UpdateFlavorTitle(Post post, string flavorTitle)
+        {
+            lock (activePosts)
+            {
+                updateFlavorTitle.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["id"] = post.id,
+                    ["flavorTitle"] = flavorTitle,
+                });
+
+                post.flavorTitle = flavorTitle;
 
                 TriggerCallbacks();
             }

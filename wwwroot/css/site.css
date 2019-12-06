@@ -306,6 +306,10 @@ app {
     margin: 0.1rem;
 }
 
+.rw-actions input {
+    width: 30rem;
+}
+
 .reportbutton-approved {
   background-color: #efe;
 }
