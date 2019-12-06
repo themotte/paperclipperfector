@@ -175,7 +175,7 @@ namespace PaperclipPerfector
                         ["id"] = post.name,
                         ["author"] = post.author,
                         ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
-                        ["text"] = post.body ?? $"HttpUtility.HtmlEncode(post.url)",
+                        ["text"] = post.body ?? post.url,
                         ["ups"] = post.ups,
                         ["permalink"] = post.permalink,
                         ["timestamp"] = post.created_utc,
