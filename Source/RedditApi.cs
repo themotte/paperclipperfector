@@ -111,13 +111,23 @@ namespace PaperclipPerfector
             public string body;
             public string permalink;
             public long created_utc;
-            public string link_title;
             public string url;
+
+            // I have no idea why it uses these inconsistently, but it does
+            public string title;
+            public string link_title;
+
+            public string link_id;
 
             public string[][] user_reports;
             public string[][] user_reports_dismissed;
             public string[][] mod_reports;
             public string[][] mod_reports_dismissed;
+
+            public string Title
+            {
+                get => title ?? link_title ?? RedditApi.Instance.GetPostTitle(link_id);
+            }
 
             public class Report
             {
@@ -314,6 +324,21 @@ namespace PaperclipPerfector
             }
 
             return JsonConvert.DeserializeObject<T>(content);
+        }
+
+        // Post titles never change, so we can just cache 'em as we go
+        private Dictionary<string, string> postTitleCache = new Dictionary<string, string>();
+        public string GetPostTitle(string id)
+        {
+            string postTitle = postTitleCache.TryGetValue(id);
+
+            if (postTitle == null)
+            {
+                postTitle = Entry(id).Title;
+                postTitleCache[id] = postTitle;
+            }
+
+            return postTitle;
         }
     }
 }

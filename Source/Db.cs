@@ -126,7 +126,7 @@ namespace PaperclipPerfector
             dbConnection.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS postChunks (timestamp TEXT NOT NULL, id TEXT NOT NULL)");
 
             // Init commands
-            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups", dbConnection);
+            insertPost = new SQLiteCommand("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups, title=excluded.title", dbConnection);   // Note: The title *shouldn't* change, but at one point I had a bug where it wasn't parsed properly. This updates it for existing posts.
             insertReportType = new SQLiteCommand($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
             clearReports = new SQLiteCommand("DELETE FROM reports WHERE postId = @postId", dbConnection);
             insertReport = new SQLiteCommand("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
@@ -198,7 +198,7 @@ namespace PaperclipPerfector
                         ["ups"] = post.ups,
                         ["permalink"] = post.permalink,
                         ["timestamp"] = post.created_utc,
-                        ["title"] = post.link_title ?? "",
+                        ["title"] = post.Title,
                         ["state"] = PostState.Pending.ToString(),
                     });
 
