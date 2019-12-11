@@ -83,20 +83,38 @@
 
         // Generate post text
         string result = "";
-        foreach (var post in posts.Where(post => activeSelection.Contains(post.id)))
-        {
-            IEnumerable<string> lines = post.text.Split("\n").Where(line => !line.StartsWith(">"));
-            string text = string.Join(" ", lines);
-            IEnumerable<string> words = text.Split(new char[] {' ', '\n', '\t'}).Where(word => word.Length > 0);
-            string blurb = string.Join(" ", words.Take(20));    // TODO: split it based on character count, not word count?
-
-            string flavor = post.flavorTitle;
-            if (flavor == "")
+        foreach (var group in posts.Where(post => activeSelection.Contains(post.id)).OrderBy(post => post.creation).GroupBy(post => {
+            if (post.title.StartsWith("Culture War Roundup for the Week of"))
             {
-                flavor = blurb;
+                return post.title.Replace("Culture War Roundup for the Week of", "Contributions for the Week of");
             }
 
-            result += $"/u/{post.author}: [{flavor}]({post.link}?context=3&sort=best)  \n";
+            return "Quality Contributions in the Main Subreddit";
+        }))
+        {
+            result += $"##{group.Key}\n\n";
+
+            foreach (var post in group)
+            {
+                IEnumerable<string> lines = post.text.Split("\n").Where(line => !line.StartsWith(">"));
+                string text = string.Join(" ", lines);
+                IEnumerable<string> words = text.Split(new char[] {' ', '\n', '\t'}).Where(word => word.Length > 0);
+                string blurb = string.Join(" ", words.Take(20));    // TODO: split it based on character count, not word count?
+
+                // These characters cause problems.
+                blurb = blurb.Replace("[", "");
+                blurb = blurb.Replace("]", "");
+                blurb = blurb.Replace("*", "");
+                blurb = blurb.Replace("_", "");
+
+                string flavor = post.flavorTitle;
+                if (flavor == "")
+                {
+                    flavor = blurb;
+                }
+
+                result += $"/u/{post.author} on:\n\n* [{flavor}]({post.link}?context=3&sort=best)\n\n";
+            }
         }
 
         postText = result;
