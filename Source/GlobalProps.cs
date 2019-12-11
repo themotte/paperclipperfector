@@ -44,7 +44,7 @@ namespace PaperclipPerfector
 
     public class GlobalProps
     {
-        public DbBacked<DateTimeOffset> lastScraped = new DbBacked<DateTimeOffset>("lastScraped", DateTimeOffset.Now - TimeSpan.FromDays(30), item => item.ToString(), str => DateTimeOffset.Parse(str));
+        public DbBacked<DateTimeOffset> lastScraped = new DbBacked<DateTimeOffset>("lastScraped", DateTimeOffset.MinValue, item => item.ToString(), str => DateTimeOffset.Parse(str));
         public DbBacked<int> dbVersion = new DbBacked<int>("dbVersion", 1, item => item.ToString(), str => int.Parse(str));
 
         private static GlobalProps StoredInstance;

@@ -21,9 +21,21 @@ namespace PaperclipPerfector
                 }
 
                 Dbg.Inf("Handling moderation logs . . .");
+                var targetTimestamp = GlobalProps.Instance.lastScraped.Value;
+                if (targetTimestamp == DateTimeOffset.MinValue)
+                {
+                    // If we have no target timestamp, use a month ago, just 'cause we have to do *something*
+                    targetTimestamp = DateTimeOffset.Now - TimeSpan.FromDays(30);
+                }
+                else
+                {
+                    // If we have one, deduct five minutes from it, because we want a little bit of overlap just in case
+                    targetTimestamp = targetTimestamp - TimeSpan.FromMinutes(5);
+                }
+
                 var readLogs = RedditApi.Instance.ModerationLogs()
-                .TakeWhile(log => DateTimeOffset.FromUnixTimeSeconds(log.created_utc) > GlobalProps.Instance.lastScraped.Value - TimeSpan.FromMinutes(5))
-                .Where(log => importantLogs.Contains(log.action)).ToArray();
+                    .TakeWhile(log => DateTimeOffset.FromUnixTimeSeconds(log.created_utc) > targetTimestamp)
+                    .Where(log => importantLogs.Contains(log.action)).ToArray();
 
                 foreach (var entry in RedditApi.Instance.Entries(readLogs.Select(log => log.target_fullname)))
                 {
