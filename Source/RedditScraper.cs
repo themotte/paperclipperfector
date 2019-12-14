@@ -20,7 +20,7 @@ namespace PaperclipPerfector
                     Db.Instance.UpdatePostData(post);
 
                     var newReports = post.ReportsNew;
-                    if (newReports.Any())
+                    if (!post.spam && !post.removed && newReports.Any())
                     {
                         bool approve = true;
                         foreach (var report in newReports)

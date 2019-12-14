@@ -124,6 +124,9 @@ namespace PaperclipPerfector
             public string[][] mod_reports;
             public string[][] mod_reports_dismissed;
 
+            public bool spam;
+            public bool removed;
+
             public string Title
             {
                 get => title ?? link_title ?? RedditApi.Instance.GetPostTitle(link_id);
