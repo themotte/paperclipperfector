@@ -134,6 +134,7 @@ namespace PaperclipPerfector
                 public string reason;
                 public int count;
             }
+
             public IEnumerable<Report> Reports
             {
                 get
@@ -167,6 +168,30 @@ namespace PaperclipPerfector
                     return numeric_reports_computed.Concat(tagged_reports_computed);
                 }
             }
+
+            public IEnumerable<Report> ReportsNew
+            {
+                get
+                {
+                    var numeric_reports = Enumerable.Empty<string[]>();
+                    var tagged_reports = Enumerable.Empty<string[]>();
+
+                    if (user_reports != null)
+                    {
+                        numeric_reports = numeric_reports.Concat(user_reports);
+                    }
+
+                    if (mod_reports != null)
+                    {
+                        tagged_reports = tagged_reports.Concat(mod_reports);
+                    }
+
+                    var numeric_reports_computed = numeric_reports.Select(raw => new Report() { reason = raw[0] ?? "", count = int.Parse(raw[1]) });
+                    var tagged_reports_computed = tagged_reports.Select(raw => new Report() { reason = $"{raw[1]}: {raw[0]}", count = 1 });
+
+                    return numeric_reports_computed.Concat(tagged_reports_computed);
+                }
+            }
         }
         public Post Entry(string fullname)
         {
@@ -189,7 +214,7 @@ namespace PaperclipPerfector
             for (int cursor = 0; cursor < names.Length; cursor += singleRequestLimit)
             {
                 var nameChunk = names.Skip(cursor).Take(singleRequestLimit);
-                foreach (var post in StandardListing<Post>("api/info", new Dictionary<string, string> { ["id"] = string.Join(",", nameChunk) }, false))
+                foreach (var post in StandardListing<Post>($"r/{Config.Instance.subreddit}/api/info", new Dictionary<string, string> { ["id"] = string.Join(",", nameChunk) }, false))
                 {
                     ++results;
                     yield return post;
@@ -203,7 +228,7 @@ namespace PaperclipPerfector
         }
         public IEnumerable<Post> Reports()
         {
-            return StandardListing<Post>("about/reports");
+            return StandardListing<Post>($"r/{Config.Instance.subreddit}/about/reports");
         }
 
         public class ModerationLog
@@ -214,7 +239,15 @@ namespace PaperclipPerfector
         }
         public IEnumerable<ModerationLog> ModerationLogs()
         {
-            return StandardListing<ModerationLog>("about/log");
+            return StandardListing<ModerationLog>($"r/{Config.Instance.subreddit}/about/log");
+        }
+
+        private class NullResponse
+        {
+        }
+        public void Approve(Post post)
+        {
+            SendRequest<NullResponse>("api/approve", new Dictionary<string, string> { ["id"] = post.name }, method: HttpMethod.Post);
         }
 
         private class ListingRequest
@@ -263,8 +296,13 @@ namespace PaperclipPerfector
         }
 
         private DateTimeOffset lastRequest = DateTimeOffset.MinValue;
-        private T SendRequest<T>(string url, Dictionary<string, string> input)
+        private T SendRequest<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
         {
+            if (method == null)
+            {
+                method = HttpMethod.Get;
+            }
+
             if (input == null)
             {
                 input = new Dictionary<string, string>();
@@ -277,12 +315,12 @@ namespace PaperclipPerfector
 
             input["raw_json"] = "1";
 
-            string uri = $"https://oauth.reddit.com/r/{Config.Instance.subreddit}/{url}?" + string.Join("&", input.Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));
+            string uri = $"https://oauth.reddit.com/{url}?" + string.Join("&", input.Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));
             if (true)
             {
-                Dbg.Inf($"Request: {uri}");
+                Dbg.Inf($"{method} Request: {uri}");
             }
-            var message = new HttpRequestMessage(HttpMethod.Get, uri);
+            var message = new HttpRequestMessage(method, uri);
 
             // Pause for rate limiting
             {

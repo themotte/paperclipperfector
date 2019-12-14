@@ -18,6 +18,26 @@ namespace PaperclipPerfector
                 foreach (var post in RedditApi.Instance.Reports())
                 {
                     Db.Instance.UpdatePostData(post);
+
+                    var newReports = post.ReportsNew;
+                    if (newReports.Any())
+                    {
+                        bool approve = true;
+                        foreach (var report in newReports)
+                        {
+                            if (Db.Instance.GetReportType(report.reason).category != Db.ReportCategory.Positive)
+                            {
+                                approve = false;
+                                break;
+                            }
+                        }
+
+                        if (approve)
+                        {
+                            Dbg.Inf($"Approving post {post.name}/{post.author}");
+                            RedditApi.Instance.Approve(post);
+                        }
+                    }
                 }
 
                 Dbg.Inf("Handling moderation logs . . .");
