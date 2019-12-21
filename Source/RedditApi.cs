@@ -298,8 +298,56 @@ namespace PaperclipPerfector
             }
         }
 
-        private DateTimeOffset lastRequest = DateTimeOffset.MinValue;
         private T SendRequest<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
+        {
+            while (true)
+            {
+                try
+                {
+                    return SendRequest_Internal<T>(url, input, method);
+                }
+                catch (System.Threading.Tasks.TaskCanceledException e)
+                {
+                    Dbg.Ex(e);
+
+                    Thread.Sleep(TimeSpan.FromSeconds(15));
+
+                    // try again
+                }
+                catch (UnauthorizedException e)
+                {
+                    Dbg.Ex(e);
+
+                    // We've probably just had our access token time out
+                    RefreshAccessToken();
+
+                    // try again
+                }
+                catch (HttpStatusException e)
+                {
+                    Dbg.Ex(e);
+
+                    Thread.Sleep(TimeSpan.FromSeconds(15));
+
+                    // try again
+                }
+                catch (Exception e)
+                {
+                    // uhhh
+                    Dbg.Ex(e);
+
+                    Thread.Sleep(TimeSpan.FromSeconds(15));
+
+                    // . . . try again?
+                }
+            }
+        }
+
+        private class HttpStatusException : Exception { }
+        private class UnauthorizedException : Exception { }
+
+        private DateTimeOffset lastRequest = DateTimeOffset.MinValue;
+        private T SendRequest_Internal<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
         {
             if (method == null)
             {
@@ -344,17 +392,15 @@ namespace PaperclipPerfector
 
             if (result.StatusCode == HttpStatusCode.Unauthorized)
             {
-                // We've probably just had our access token time out; try again
-                RefreshAccessToken();
-                return SendRequest<T>(url, input);
+                throw new UnauthorizedException();
             }
 
             if (result.StatusCode != HttpStatusCode.OK)
             {
                 // Just try again later I guess
                 Dbg.Err($"{uri}: {result.StatusCode}");
-                Thread.Sleep(TimeSpan.FromSeconds(15));
-                return SendRequest<T>(url, input);
+
+                throw new HttpStatusException();
             }
 
             var content = result.Content.ReadAsStringAsync().Result;
