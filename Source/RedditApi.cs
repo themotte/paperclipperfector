@@ -250,6 +250,11 @@ namespace PaperclipPerfector
         }
         public void Approve(Post post)
         {
+            if (Config.Instance.read_only)
+            {
+                return;
+            }
+
             SendRequest<NullResponse>("api/approve", new Dictionary<string, string> { ["id"] = post.name }, method: HttpMethod.Post);
         }
 

@@ -4,5 +4,7 @@
     "refreshToken": "626775793947-JNnrKURHah2wq8dzZjm63Av9Ec4",
 
     "subreddit": "catpictures",
-    "password": "AVerySecurePassword"
+    "password": "AVerySecurePassword",
+    
+    "read_only": false
 }

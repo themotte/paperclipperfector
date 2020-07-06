@@ -16,6 +16,8 @@ namespace PaperclipPerfector
 
         public string password;
 
+        public bool read_only = true;
+
         private static Config StoredInstance;
         public static Config Instance
         {
