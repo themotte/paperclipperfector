@@ -11,7 +11,9 @@ using System.Web;
 
 namespace PaperclipPerfector
 {
-    // dbLock is absolutely more aggressive than necessary, but it really *really* does not matter for this application.
+    // I'm pretty sure there are race conditions in here.
+    // It should really be made a lot more strict about parallel calls, but I'm just trying to make it *work* right now, and I'm more concerned about deadlocks than about minor data inconsistencies.
+    // This is pretty bad though.
     public class Db
     {
         private SQLiteConnection dbConnection;
@@ -192,54 +194,43 @@ namespace PaperclipPerfector
 
         public void UpdatePostData(RedditApi.Post post)
         {
-            dbLock.Wait();
-
-            try
+            using (var transaction = dbConnection.BeginTransaction())
             {
-                using (var transaction = dbConnection.BeginTransaction())
+                insertPost.ExecuteNonQuery(new Dictionary<string, object>()
                 {
-                    insertPost.ExecuteNonQuery(new Dictionary<string, object>()
+                    ["id"] = post.name,
+                    ["author"] = post.author,
+                    ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
+                    ["text"] = post.body ?? post.url,
+                    ["ups"] = post.ups,
+                    ["permalink"] = post.permalink,
+                    ["timestamp"] = post.created_utc,
+                    ["title"] = post.Title().Result,
+                    ["state"] = PostState.Pending.ToString(),
+                });
+
+                clearReports.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["postId"] = post.name,
+                });
+
+                foreach (var report in post.Reports)
+                {
+                    insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
                     {
-                        ["id"] = post.name,
-                        ["author"] = post.author,
-                        ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
-                        ["text"] = post.body ?? post.url,
-                        ["ups"] = post.ups,
-                        ["permalink"] = post.permalink,
-                        ["timestamp"] = post.created_utc,
-                        ["title"] = post.Title().Result,
-                        ["state"] = PostState.Pending.ToString(),
+                        ["id"] = report.reason,
                     });
 
-                    clearReports.ExecuteNonQuery(new Dictionary<string, object>()
+                    insertReport.ExecuteNonQuery(new Dictionary<string, object>()
                     {
                         ["postId"] = post.name,
+                        ["reportTypeId"] = report.reason,
+                        ["count"] = report.count,
                     });
-
-                    foreach (var report in post.Reports)
-                    {
-                        insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
-                        {
-                            ["id"] = report.reason,
-                        });
-
-                        insertReport.ExecuteNonQuery(new Dictionary<string, object>()
-                        {
-                            ["postId"] = post.name,
-                            ["reportTypeId"] = report.reason,
-                            ["count"] = report.count,
-                        });
-                    }
-
-                    // if this fails, it's OK, we'll just pick it up again on our next pass
-                    transaction.Commit();
                 }
 
-                UpdateActivePost(post.name);
-            }
-            finally
-            {
-                dbLock.Release();
+                // if this fails, it's OK, we'll just pick it up again on our next pass
+                transaction.Commit();
             }
         }
 
@@ -272,20 +263,19 @@ namespace PaperclipPerfector
                             return new WeakReference<Post>(post);
                         });
 
-                        post = post ?? oldRef.TryGetTarget();
+                        post ??= oldRef.TryGetTarget();
 
-                        if (post == null)
+                        if (post != null)
                         {
-                            // We didn't insert our object, but we also didn't get a valid object
-                            // This suggests that we got a WeakReference without a valid pointer
-                            // That's OK; (try to) remove it and try again.
-                            activePosts.Remove(id, oldRef);
-                            continue;
+                            // Success!
+                            result.Add(post);
+                            break;
                         }
 
-                        // Success!
-                        result.Add(post);
-                        break;
+                        // We didn't insert our object, but we also didn't get a valid object
+                        // This suggests that we got a WeakReference without a valid pointer
+                        // That's OK; (try to) remove it and try again.
+                        activePosts.Remove(id, oldRef);
                     }
                 }
                 posts.Close();
@@ -299,7 +289,6 @@ namespace PaperclipPerfector
         private void UpdateActivePost(string id)
         {
             var post = activePosts.TryGetValue(id)?.TryGetTarget();
-
             if (post == null)
             {
                 // nothin' to do
@@ -379,16 +368,12 @@ namespace PaperclipPerfector
 
         public ReportType GetReportType(string id)
         {
-            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
-            dbLock.Wait();
-
-            try
+            while (true)
             {
-                var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
-                if (reportType == null)
+                ReportType reportType = null;
+                var oldRef = activeReportTypes.GetOrAdd(id, id =>
                 {
                     reportType = new ReportType();
-                    activeReportTypes[id] = new WeakReference<ReportType>(reportType);
 
                     var reader = readReportType.ExecuteReader(new Dictionary<string, object>()
                     {
@@ -399,49 +384,64 @@ namespace PaperclipPerfector
                     ReadReportTypeFromReader(reader, reportType);
 
                     reader.Close();
+
+                    return new WeakReference<ReportType>(reportType);
+                });
+
+                reportType ??= oldRef.TryGetTarget();
+
+                if (reportType != null)
+                {
+                    // Success!
+                    return reportType;
                 }
 
-                return reportType;
-            }
-            finally
-            {
-                dbLock.Release();
+                // We didn't insert our object, but we also didn't get a valid object
+                // This suggests that we got a WeakReference without a valid pointer
+                // That's OK; (try to) remove it and try again.
+                activeReportTypes.Remove(id, oldRef);
             }
         }
 
         public ReportType[] ReadAllReportTypes()
         {
-            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
-            dbLock.Wait();
+            var result = new List<ReportType>();
 
-            try
+            var reportTypes = readReportTypes.ExecuteReader();
+            while (reportTypes.Read())
             {
-                var result = new List<ReportType>();
+                string id = reportTypes.GetField<string>("id");
 
-                var reportTypes = readReportTypes.ExecuteReader();
-                while (reportTypes.Read())
+                while (true)
                 {
-                    string id = reportTypes.GetField<string>("id");
-                    var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
-
-                    if (reportType == null)
+                    ReportType reportType = null;
+                    var oldRef = activeReportTypes.GetOrAdd(id, id =>
                     {
                         reportType = new ReportType();
-                        activeReportTypes[id] = new WeakReference<ReportType>(reportType);
 
                         ReadReportTypeFromReader(reportTypes, reportType);
+
+                        return new WeakReference<ReportType>(reportType);
+                    });
+
+                    reportType ??= oldRef.TryGetTarget();
+
+                    if (reportType != null)
+                    {
+                        // Success!
+                        result.Add(reportType);
+                        break;
                     }
 
-                    result.Add(reportType);
+                    // We didn't insert our object, but we also didn't get a valid object
+                    // This suggests that we got a WeakReference without a valid pointer
+                    // That's OK; (try to) remove it and try again.
+                    activeReportTypes.Remove(id, oldRef);
                 }
-                reportTypes.Close();
+            }
+            reportTypes.Close();
 
-                return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
-            }
-            finally
-            {
-                dbLock.Release();
-            }
+            return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
         }
 
         private void ReadReportTypeFromReader(SQLiteDataReader reader, ReportType reportType)
@@ -452,7 +452,6 @@ namespace PaperclipPerfector
 
         public void UpdateReportTypeCategory(ReportType reportType, ReportCategory category)
         {
-            // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
             dbLock.Wait();
 
             try
@@ -464,13 +463,13 @@ namespace PaperclipPerfector
                 });
 
                 reportType.category = category;
-
-                TriggerCallbacks();
             }
             finally
             {
                 dbLock.Release();
             }
+
+            TriggerCallbacks();
         }
 
         public bool HasUnassignedReportTypes()
