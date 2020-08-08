@@ -3,19 +3,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PaperclipPerfector
 {
     public class RedditScraper
     {
-        public void Main()
+        public async Task Main()
         {
             var importantLogs = new HashSet<string> { "approvecomment", "approvelink", "removecomment", "removelink" };
 
             while (true)
             {
                 Dbg.Inf("Handling active reports . . .");
-                foreach (var post in RedditApi.Instance.Reports())
+                await foreach (var post in RedditApi.Instance.Reports())
                 {
                     Db.Instance.UpdatePostData(post);
 
@@ -35,7 +36,7 @@ namespace PaperclipPerfector
                         if (approve)
                         {
                             Dbg.Inf($"Approving post {post.name}/{post.author}");
-                            RedditApi.Instance.Approve(post);
+                            await RedditApi.Instance.Approve(post);
                         }
                     }
                 }
@@ -53,11 +54,11 @@ namespace PaperclipPerfector
                     targetTimestamp = targetTimestamp - TimeSpan.FromMinutes(5);
                 }
 
-                var readLogs = RedditApi.Instance.ModerationLogs()
+                var readLogs = await RedditApi.Instance.ModerationLogs()
                     .TakeWhile(log => DateTimeOffset.FromUnixTimeSeconds(log.created_utc) > targetTimestamp)
-                    .Where(log => importantLogs.Contains(log.action)).ToArray();
+                    .Where(log => importantLogs.Contains(log.action)).ToArrayAsync();
 
-                foreach (var entry in RedditApi.Instance.Entries(readLogs.Select(log => log.target_fullname)))
+                await foreach (var entry in RedditApi.Instance.Entries(readLogs.Select(log => log.target_fullname)))
                 {
                     Db.Instance.UpdatePostData(entry);
                 }

@@ -1,4 +1,5 @@
 
+using System;
 using System.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,8 @@ namespace PaperclipPerfector
             var db = Db.Instance;
             db.UpdateSchema();
 
-            new Thread(new RedditScraper().Main).Start();
+            // live free! live free forever!
+            new RedditScraper().Main().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
 
             CreateHostBuilder(args).Build().Run();
         }

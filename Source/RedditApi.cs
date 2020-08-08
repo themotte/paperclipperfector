@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PaperclipPerfector
 {
@@ -38,14 +39,14 @@ namespace PaperclipPerfector
 
             accessClient = new HttpClient();
 
-            RefreshAccessToken();
+            RefreshAccessToken().Wait();
         }
 
         private struct AccessTokenResponse
         {
             public string access_token;
         }
-        private void RefreshAccessToken()
+        private async Task RefreshAccessToken()
         {
             Dbg.Inf("Refreshing access token . . .");
 
@@ -70,8 +71,8 @@ namespace PaperclipPerfector
 
                     message.Content = formData;
 
-                    var result = accessClient.SendAsync(message).Result;
-                    var content = result.Content.ReadAsStringAsync().Result;
+                    var result = await accessClient.SendAsync(message);
+                    var content = await result.Content.ReadAsStringAsync();
 
                     var response = JsonConvert.DeserializeObject<AccessTokenResponse>(content);
                     client.DefaultRequestHeaders.Remove("Authorization");
@@ -127,9 +128,9 @@ namespace PaperclipPerfector
             public bool spam;
             public bool removed;
 
-            public string Title
+            public async Task<string> Title()
             {
-                get => title ?? link_title ?? RedditApi.Instance.GetPostTitle(link_id);
+                return title ?? link_title ?? await RedditApi.Instance.GetPostTitle(link_id);
             }
 
             public class Report
@@ -196,11 +197,11 @@ namespace PaperclipPerfector
                 }
             }
         }
-        public Post Entry(string fullname)
+        public async Task<Post> Entry(string fullname)
         {
-            return Entries(new string[] { fullname }).First();
+            return await Entries(new string[] { fullname }).FirstAsync();
         }
-        public IEnumerable<Post> Entries(IEnumerable<string> fullnames)
+        public async IAsyncEnumerable<Post> Entries(IEnumerable<string> fullnames)
         {
             // We need to do this anyway in order to send the request, so I might as well do it here.
             // I guess if I felt like being super-clever I could do this only up to the level of a single request so we get cute deferred processing as we go.
@@ -217,7 +218,7 @@ namespace PaperclipPerfector
             for (int cursor = 0; cursor < names.Length; cursor += singleRequestLimit)
             {
                 var nameChunk = names.Skip(cursor).Take(singleRequestLimit);
-                foreach (var post in StandardListing<Post>($"r/{Config.Instance.subreddit}/api/info", new Dictionary<string, string> { ["id"] = string.Join(",", nameChunk) }, false))
+                await foreach (var post in StandardListing<Post>($"r/{Config.Instance.subreddit}/api/info", new Dictionary<string, string> { ["id"] = string.Join(",", nameChunk) }, false))
                 {
                     ++results;
                     yield return post;
@@ -229,7 +230,7 @@ namespace PaperclipPerfector
                 Dbg.Err($"Got the wrong number of entries! Expected {names.Length}, got {results}");
             }
         }
-        public IEnumerable<Post> Reports()
+        public IAsyncEnumerable<Post> Reports()
         {
             return StandardListing<Post>($"r/{Config.Instance.subreddit}/about/reports");
         }
@@ -240,7 +241,7 @@ namespace PaperclipPerfector
             public string target_fullname;
             public long created_utc;
         }
-        public IEnumerable<ModerationLog> ModerationLogs()
+        public IAsyncEnumerable<ModerationLog> ModerationLogs()
         {
             return StandardListing<ModerationLog>($"r/{Config.Instance.subreddit}/about/log");
         }
@@ -248,21 +249,21 @@ namespace PaperclipPerfector
         private class NullResponse
         {
         }
-        public void Approve(Post post)
+        public async Task Approve(Post post)
         {
             if (Config.Instance.read_only)
             {
                 return;
             }
 
-            SendRequest<NullResponse>("api/approve", new Dictionary<string, string> { ["id"] = post.name }, method: HttpMethod.Post);
+            await SendRequest<NullResponse>("api/approve", new Dictionary<string, string> { ["id"] = post.name }, method: HttpMethod.Post);
         }
 
         private class ListingRequest
         {
             public string after;
         }
-        public IEnumerable<T> StandardListing<T>(string url, Dictionary<string, string> parameters = null, bool allowMultipage = true)
+        public async IAsyncEnumerable<T> StandardListing<T>(string url, Dictionary<string, string> parameters = null, bool allowMultipage = true)
         {
             string after = null;
 
@@ -279,7 +280,7 @@ namespace PaperclipPerfector
             while (true)
             {
                 params_writeable["after"] = after;
-                var result = SendRequest<Item<Listing<T>>>(url, params_writeable);
+                var result = await SendRequest<Item<Listing<T>>>(url, params_writeable);
                 if (result.data == null)
                 {
                     break;
@@ -303,13 +304,13 @@ namespace PaperclipPerfector
             }
         }
 
-        private T SendRequest<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
+        private async Task<T> SendRequest<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
         {
             while (true)
             {
                 try
                 {
-                    return SendRequest_Internal<T>(url, input, method);
+                    return await SendRequest_Internal<T>(url, input, method);
                 }
                 catch (System.Threading.Tasks.TaskCanceledException e)
                 {
@@ -324,7 +325,7 @@ namespace PaperclipPerfector
                     Dbg.Ex(e);
 
                     // We've probably just had our access token time out
-                    RefreshAccessToken();
+                    await RefreshAccessToken();
 
                     // try again
                 }
@@ -352,7 +353,7 @@ namespace PaperclipPerfector
         private class UnauthorizedException : Exception { }
 
         private DateTimeOffset lastRequest = DateTimeOffset.MinValue;
-        private T SendRequest_Internal<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
+        private async Task<T> SendRequest_Internal<T>(string url, Dictionary<string, string> input, HttpMethod method = null)
         {
             if (method == null)
             {
@@ -393,7 +394,7 @@ namespace PaperclipPerfector
                 lastRequest = DateTimeOffset.Now;
             }
 
-            var result = client.SendAsync(message).Result;
+            var result = await client.SendAsync(message);
 
             if (result.StatusCode == HttpStatusCode.Unauthorized)
             {
@@ -408,7 +409,7 @@ namespace PaperclipPerfector
                 throw new HttpStatusException();
             }
 
-            var content = result.Content.ReadAsStringAsync().Result;
+            var content = await result.Content.ReadAsStringAsync();
 
             if (verbose)
             {
@@ -420,13 +421,13 @@ namespace PaperclipPerfector
 
         // Post titles never change, so we can just cache 'em as we go
         private Dictionary<string, string> postTitleCache = new Dictionary<string, string>();
-        public string GetPostTitle(string id)
+        public async Task<string> GetPostTitle(string id)
         {
             string postTitle = postTitleCache.TryGetValue(id);
 
             if (postTitle == null)
             {
-                postTitle = Entry(id).Title;
+                postTitle = await (await Entry(id)).Title();
                 postTitleCache[id] = postTitle;
             }
 

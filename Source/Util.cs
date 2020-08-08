@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Linq;
@@ -51,7 +52,7 @@ namespace PaperclipPerfector
             task.ContinueWith(task => Dbg.Ex(task.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        public static V TryGetValue<K, V>(this Dictionary<K, V> dict, K key)
+        public static V TryGetValue<K, V>(this IDictionary<K, V> dict, K key)
         {
             if (dict.TryGetValue(key, out V result))
             {
@@ -78,6 +79,23 @@ namespace PaperclipPerfector
         public static T EnumParse<T>(string input)
         {
             return (T)Enum.Parse(typeof(T), input);
+        }
+
+        public static bool TryUpdateOrAdd<K, V>(this ConcurrentDictionary<K, V> self, K key, V value, V valueOld) where V : class
+        {
+            if (valueOld == default(V))
+            {
+                return self.TryAdd(key, value);
+            }
+            else
+            {
+                return self.TryUpdate(key, value, valueOld);
+            }
+        }
+
+        public static bool Remove<K, V>(this ConcurrentDictionary<K, V> self, K key, V value)
+        {
+            return ((IDictionary<K, V>)self).Remove(new KeyValuePair<K, V>(key, value));
         }
     }
 }

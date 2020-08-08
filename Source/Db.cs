@@ -1,14 +1,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace PaperclipPerfector
 {
-    // The lock on activePosts is absolutely more aggressive than necessary, but it really *really* does not matter for this application.
+    // dbLock is absolutely more aggressive than necessary, but it really *really* does not matter for this application.
     public class Db
     {
         private SQLiteConnection dbConnection;
@@ -36,9 +39,13 @@ namespace PaperclipPerfector
         private SQLiteCommand readGlobalProp;
         private SQLiteCommand writeGlobalProp;
 
-        private HashSet<Action> callbacks = new HashSet<Action>();
-        private Dictionary<string, WeakReference<Post>> activePosts = new Dictionary<string, WeakReference<Post>>();
-        private Dictionary<string, WeakReference<ReportType>> activeReportTypes = new Dictionary<string, WeakReference<ReportType>>();
+        // bool exists just because what we really want is a hashset
+        // these are the only mutable values in here, the rest are all const and threadsafe
+        private ConcurrentDictionary<Action, bool> callbacks = new ConcurrentDictionary<Action, bool>();
+        private ConcurrentDictionary<string, WeakReference<Post>> activePosts = new ConcurrentDictionary<string, WeakReference<Post>>();
+        private ConcurrentDictionary<string, WeakReference<ReportType>> activeReportTypes = new ConcurrentDictionary<string, WeakReference<ReportType>>();
+
+        private SemaphoreSlim dbLock = new SemaphoreSlim(1, 1);
 
         private static Db StoredInstance;
         public static Db Instance
@@ -167,25 +174,27 @@ namespace PaperclipPerfector
 
         public void RegisterCallback(Action callback)
         {
-            callbacks.Add(callback);
+            callbacks.TryAdd(callback, true);
         }
 
         public void UnregisterCallback(Action callback)
         {
-            callbacks.Remove(callback);
+            callbacks.Remove(callback, out _);
         }
 
         private void TriggerCallbacks()
         {
             foreach (var callback in callbacks)
             {
-                callback.Invoke();
+                callback.Key.Invoke();
             }
         }
 
         public void UpdatePostData(RedditApi.Post post)
         {
-            lock (activePosts)
+            dbLock.Wait();
+
+            try
             {
                 using (var transaction = dbConnection.BeginTransaction())
                 {
@@ -198,7 +207,7 @@ namespace PaperclipPerfector
                         ["ups"] = post.ups,
                         ["permalink"] = post.permalink,
                         ["timestamp"] = post.created_utc,
-                        ["title"] = post.Title,
+                        ["title"] = post.Title().Result,
                         ["state"] = PostState.Pending.ToString(),
                     });
 
@@ -228,44 +237,62 @@ namespace PaperclipPerfector
 
                 UpdateActivePost(post.name);
             }
+            finally
+            {
+                dbLock.Release();
+            }
         }
 
         public Post[] ReadAllPosts(PostState state)
         {
-            lock (activePosts)
+            // This is just for the sake of getting an atomic snapshot
+            // It's okay if it's a little out of date
+            using (var transaction = dbConnection.BeginTransaction())
             {
-                // This is just for the sake of getting an atomic snapshot
-                // It's okay if it's a little out of date
-                using (var transaction = dbConnection.BeginTransaction())
-                {
-                    var result = new List<Post>();
+                var result = new List<Post>();
 
-                    var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
-                    {
-                        ["state"] = state.ToString(),
-                    });
-                    while (posts.Read())
+                var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
+                {
+                    ["state"] = state.ToString(),
+                });
+                while (posts.Read())
+                {
+                    while (true)
                     {
                         string id = posts.GetField<string>("id");
-                        var post = activePosts.TryGetValue(id)?.TryGetTarget();
 
-                        if (post == null)
+                        Post post = null;
+                        var oldRef = activePosts.GetOrAdd(id, id =>
                         {
                             post = new Post();
-                            activePosts[id] = new WeakReference<Post>(post);
 
                             // If post isn't null, we already have the right data
                             ReadPostFromReader(posts, post);
+
+                            return new WeakReference<Post>(post);
+                        });
+
+                        post = post ?? oldRef.TryGetTarget();
+
+                        if (post == null)
+                        {
+                            // We didn't insert our object, but we also didn't get a valid object
+                            // This suggests that we got a WeakReference without a valid pointer
+                            // That's OK; (try to) remove it and try again.
+                            activePosts.Remove(id, oldRef);
+                            continue;
                         }
 
+                        // Success!
                         result.Add(post);
+                        break;
                     }
-                    posts.Close();
-
-                    transaction.Rollback();
-
-                    return result.ToArray();
                 }
+                posts.Close();
+
+                transaction.Rollback();
+
+                return result.ToArray();
             }
         }
 
@@ -326,40 +353,36 @@ namespace PaperclipPerfector
 
         public void UpdatePostState(Post post, PostState state)
         {
-            lock (activePosts)
+            updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
             {
-                updatePostState.ExecuteNonQuery(new Dictionary<string, object>()
-                {
-                    ["id"] = post.id,
-                    ["state"] = state.ToString(),
-                });
+                ["id"] = post.id,
+                ["state"] = state.ToString(),
+            });
 
-                post.state = state;
+            post.state = state;
 
-                TriggerCallbacks();
-            }
+            TriggerCallbacks();
         }
 
         public void UpdateFlavorTitle(Post post, string flavorTitle)
         {
-            lock (activePosts)
+            updateFlavorTitle.ExecuteNonQuery(new Dictionary<string, object>()
             {
-                updateFlavorTitle.ExecuteNonQuery(new Dictionary<string, object>()
-                {
-                    ["id"] = post.id,
-                    ["flavorTitle"] = flavorTitle,
-                });
+                ["id"] = post.id,
+                ["flavorTitle"] = flavorTitle,
+            });
 
-                post.flavorTitle = flavorTitle;
+            post.flavorTitle = flavorTitle;
 
-                TriggerCallbacks();
-            }
+            TriggerCallbacks();
         }
 
         public ReportType GetReportType(string id)
         {
             // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
-            lock (activePosts)
+            dbLock.Wait();
+
+            try
             {
                 var reportType = activeReportTypes.TryGetValue(id)?.TryGetTarget();
                 if (reportType == null)
@@ -380,12 +403,18 @@ namespace PaperclipPerfector
 
                 return reportType;
             }
+            finally
+            {
+                dbLock.Release();
+            }
         }
 
         public ReportType[] ReadAllReportTypes()
         {
             // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
-            lock (activePosts)
+            dbLock.Wait();
+
+            try
             {
                 var result = new List<ReportType>();
 
@@ -409,6 +438,10 @@ namespace PaperclipPerfector
 
                 return result.OrderBy(rt => rt.id).OrderBy(rt => rt.category).ToArray();
             }
+            finally
+            {
+                dbLock.Release();
+            }
         }
 
         private void ReadReportTypeFromReader(SQLiteDataReader reader, ReportType reportType)
@@ -420,7 +453,9 @@ namespace PaperclipPerfector
         public void UpdateReportTypeCategory(ReportType reportType, ReportCategory category)
         {
             // It's the wrong lock, but I don't want to worry about lock ordering. This is safe, just unnecessarily slow.
-            lock (activePosts)
+            dbLock.Wait();
+
+            try
             {
                 updateReportType.ExecuteNonQuery(new Dictionary<string, object>()
                 {
@@ -431,6 +466,10 @@ namespace PaperclipPerfector
                 reportType.category = category;
 
                 TriggerCallbacks();
+            }
+            finally
+            {
+                dbLock.Release();
             }
         }
 
