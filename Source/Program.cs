@@ -15,7 +15,7 @@ namespace PaperclipPerfector
             db.UpdateSchema();
 
             // live free! live free forever!
-            new RedditScraper().Main().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
+            new RedditScraper().Spawner().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
 
             CreateHostBuilder(args).Build().Run();
         }

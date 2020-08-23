@@ -9,6 +9,22 @@ namespace PaperclipPerfector
 {
     public class RedditScraper
     {
+        public async Task Spawner()
+        {
+            while (true)
+            {
+                try
+                {
+                    await Main();
+                }
+                catch (Exception e)
+                {
+                    Dbg.Ex(e);
+                    await Task.Delay(TimeSpan.FromMinutes(1));
+                }
+            }
+        }
+
         public async Task Main()
         {
             var importantLogs = new HashSet<string> { "approvecomment", "approvelink", "removecomment", "removelink" };
