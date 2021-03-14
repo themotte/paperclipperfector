@@ -209,128 +209,113 @@ namespace PaperclipPerfector
 
         public void UpdatePostData(RedditApi.Post post)
         {
-            using (var transaction = dbConnection.BeginTransaction())
+            insertPost.ExecuteNonQuery(new Dictionary<string, object>()
             {
-                insertPost.ExecuteNonQuery(new Dictionary<string, object>()
+                ["id"] = post.name,
+                ["author"] = post.author,
+                ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
+                ["text"] = post.body ?? post.url,
+                ["ups"] = post.ups,
+                ["permalink"] = post.permalink,
+                ["timestamp"] = post.created_utc,
+                ["title"] = post.Title().Result,
+                ["state"] = PostState.Pending.ToString(),
+            });
+
+            clearReports.ExecuteNonQuery(new Dictionary<string, object>()
+            {
+                ["postId"] = post.name,
+            });
+
+            foreach (var report in post.Reports)
+            {
+                insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
                 {
-                    ["id"] = post.name,
-                    ["author"] = post.author,
-                    ["html"] = post.body_html ?? $"<a href=\"{HttpUtility.JavaScriptStringEncode(post.url)}\">{HttpUtility.HtmlEncode(post.url)}</a>",
-                    ["text"] = post.body ?? post.url,
-                    ["ups"] = post.ups,
-                    ["permalink"] = post.permalink,
-                    ["timestamp"] = post.created_utc,
-                    ["title"] = post.Title().Result,
-                    ["state"] = PostState.Pending.ToString(),
+                    ["id"] = report.reason,
                 });
 
-                clearReports.ExecuteNonQuery(new Dictionary<string, object>()
+                insertReport.ExecuteNonQuery(new Dictionary<string, object>()
                 {
                     ["postId"] = post.name,
+                    ["reportTypeId"] = report.reason,
+                    ["count"] = report.count,
                 });
-
-                foreach (var report in post.Reports)
-                {
-                    insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
-                    {
-                        ["id"] = report.reason,
-                    });
-
-                    insertReport.ExecuteNonQuery(new Dictionary<string, object>()
-                    {
-                        ["postId"] = post.name,
-                        ["reportTypeId"] = report.reason,
-                        ["count"] = report.count,
-                    });
-                }
-
-                // if this fails, it's OK, we'll just pick it up again on our next pass
-                transaction.Commit();
             }
         }
 
         public Post[] ReadAllPosts(PostState state, int limit, LimitBehavior limitBehavior)
         {
-            // This is just for the sake of getting an atomic snapshot
-            // It's okay if it's a little out of date
-            using (var transaction = dbConnection.BeginTransaction())
+            var result = new List<Post>();
+
+            SQLiteDataReader posts;
+
+            if (limitBehavior == LimitBehavior.All)
             {
-                var result = new List<Post>();
-
-                SQLiteDataReader posts;
-
-                if (limitBehavior == LimitBehavior.All)
+                posts = readPosts.ExecuteReader(new Dictionary<string, object>()
                 {
-                    posts = readPosts.ExecuteReader(new Dictionary<string, object>()
-                    {
-                        ["state"] = state.ToString(),
-                    });
-                }
-                else if (limitBehavior == LimitBehavior.First)
-                {
-                    posts = readPostsLimit.ExecuteReader(new Dictionary<string, object>()
-                    {
-                        ["state"] = state.ToString(),
-                        ["limit"] = limit.ToString(),
-                    });
-                }
-                else if (limitBehavior == LimitBehavior.Last)
-                {
-                    posts = readPostsLimitReversed.ExecuteReader(new Dictionary<string, object>()
-                    {
-                        ["state"] = state.ToString(),
-                        ["limit"] = limit.ToString(),
-                    });
-                }
-                else
-                {
-                    transaction.Rollback();
-                    return null;
-                }
-
-                while (posts.Read())
-                {
-                    while (true)
-                    {
-                        string id = posts.GetField<string>("id");
-
-                        Post post = null;
-                        var oldRef = activePosts.GetOrAdd(id, id =>
-                        {
-                            post = new Post();
-
-                            // If post isn't null, we already have the right data
-                            ReadPostFromReader(posts, post);
-
-                            return new WeakReference<Post>(post);
-                        });
-
-                        post ??= oldRef.TryGetTarget();
-
-                        if (post != null)
-                        {
-                            // Success!
-                            result.Add(post);
-                            break;
-                        }
-
-                        // We didn't insert our object, but we also didn't get a valid object
-                        // This suggests that we got a WeakReference without a valid pointer
-                        // That's OK; (try to) remove it and try again.
-                        activePosts.Remove(id, oldRef);
-                    }
-                }
-                posts.Close();
-
-                transaction.Rollback();
-
-                return result.ToArray();
+                    ["state"] = state.ToString(),
+                });
             }
+            else if (limitBehavior == LimitBehavior.First)
+            {
+                posts = readPostsLimit.ExecuteReader(new Dictionary<string, object>()
+                {
+                    ["state"] = state.ToString(),
+                    ["limit"] = limit.ToString(),
+                });
+            }
+            else if (limitBehavior == LimitBehavior.Last)
+            {
+                posts = readPostsLimitReversed.ExecuteReader(new Dictionary<string, object>()
+                {
+                    ["state"] = state.ToString(),
+                    ["limit"] = limit.ToString(),
+                });
+            }
+            else
+            {
+                return null;
+            }
+
+            while (posts.Read())
+            {
+                while (true)
+                {
+                    string id = posts.GetField<string>("id");
+
+                    Post post = null;
+                    var oldRef = activePosts.GetOrAdd(id, id =>
+                    {
+                        post = new Post();
+
+                        // If post isn't null, we already have the right data
+                        ReadPostFromReader(posts, post);
+
+                        return new WeakReference<Post>(post);
+                    });
+
+                    post ??= oldRef.TryGetTarget();
+
+                    if (post != null)
+                    {
+                        // Success!
+                        result.Add(post);
+                        break;
+                    }
+
+                    // We didn't insert our object, but we also didn't get a valid object
+                    // This suggests that we got a WeakReference without a valid pointer
+                    // That's OK; (try to) remove it and try again.
+                    activePosts.Remove(id, oldRef);
+                }
+            }
+            posts.Close();
+
+            return result.ToArray();
         }
 
         public int CountAllPosts(PostState state)
         {
-            // We don't even really care if this is out of date
             var result = countPosts.ExecuteReader(new Dictionary<string, object>()
             {
                 ["state"] = state.ToString(),
@@ -565,36 +550,13 @@ namespace PaperclipPerfector
             });
         }
 
-        public bool MoveToPosted(IEnumerable<string> ids, DateTimeOffset timestamp)
+        public void MoveToPosted(IEnumerable<string> ids, DateTimeOffset timestamp)
         {
-            using (var transaction = dbConnection.BeginTransaction())
+            foreach (var id in ids)
             {
-                bool failed = false;
-                foreach (var id in ids)
-                {
-                    using (var updated = finalizePostUpdate.ExecuteReader(new Dictionary<string, object> { ["id"] = id }))
-                    {
-                        if (updated.RecordsAffected != 1)
-                        {
-                            failed = true;
-
-                            break;
-                        }
-                    }
-
-                    finalizePostCommit.ExecuteNonQuery(new Dictionary<string, object> { ["id"] = id, ["timestamp"] = timestamp.ToUnixTimeSeconds() });
-                }
-
-                if (failed)
-                {
-                    transaction.Rollback();
-                    return false;
-                }
-
-                transaction.Commit();
+                finalizePostUpdate.ExecuteNonQuery(new Dictionary<string, object> { ["id"] = id });
+                finalizePostCommit.ExecuteNonQuery(new Dictionary<string, object> { ["id"] = id, ["timestamp"] = timestamp.ToUnixTimeSeconds() });
             }
-
-            return true;
         }
     }
 }
