@@ -1,3 +1,5 @@
+@inject RefreshContext refreshContext 
+
 <div class="top-row pl-4 navbar navbar-dark">
     <a class="navbar-brand" href="">Paperclip Perfector</a>
     <button class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -15,23 +17,29 @@
         <AuthorizeView Roles="moderator">
             <li class="nav-item px-3 @(Db.Instance.HasUnassignedReportTypes() ? "nav-item-highlighted" : "")">
                 <NavLink class="nav-link" href="reports">
-                    <span class="oi oi-list" aria-hidden="true"></span>Report types
+                    <span class="oi oi-list" aria-hidden="true"></span>
+                    Report types
                 </NavLink>
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="pending">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Pending posts (@(Db.Instance.CountAllPosts(Db.PostState.Pending)))
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>
+                    Pending posts (@(Db.Instance.CountAllPosts(Db.PostState.Pending)))
+                    <span class="refreshwidget oi oi-loop-circular" @onclick="RefreshActivePage"></span>
                 </NavLink>
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="approved">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Approved posts (@(Db.Instance.CountAllPosts(Db.PostState.Approved)))
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>
+                    Approved posts (@(Db.Instance.CountAllPosts(Db.PostState.Approved)))
+                    <span class="refreshwidget oi oi-loop-circular" @onclick="RefreshActivePage"></span>
                 </NavLink>
             </li>
             <br />
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="rejected">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Rejected posts
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>
+                    Rejected posts
                 </NavLink>
             </li>
         </AuthorizeView>
@@ -46,8 +54,8 @@
     protected override void OnParametersSet()
     {
         Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
-    } 
-    
+    }
+
     public void Dispose()
     {
         Db.Instance.UnregisterCallback(StateHasChangedThreadsafe);
@@ -57,6 +65,11 @@
     {
         // This matters just for the post count and nothing else. There's probably a better way to do this.
         InvokeAsync(StateHasChanged).ContinueInBackground();
+    }
+
+    public void RefreshActivePage()
+    {
+        refreshContext.TriggerCallback();
     }
 
     private void ToggleNavMenu()

@@ -1,4 +1,5 @@
 @implements IDisposable
+@inject RefreshContext refreshContext
 
 @if (HasPostButton && postText == null)
 {
@@ -39,11 +40,20 @@
         get => segment == Db.PostState.Approved;
     }
 
-    protected override void OnParametersSet()
+    protected override void OnInitialized()
     {
+        base.OnInitialized();
+
         Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
 
+        refreshContext.SetCallback(RereadPosts);
+        RereadPosts();
+    }
+
+    private void RereadPosts()
+    {
         posts = Db.Instance.ReadAllPosts(segment, limit, order);
+        StateHasChangedThreadsafe();
     }
 
     public void StateHasChangedThreadsafe()
@@ -81,7 +91,8 @@
 
         // Generate post text
         string result = "";
-        foreach (var group in posts.Where(post => activeSelection.Contains(post.id)).OrderBy(post => post.creation).GroupBy(post => {
+        foreach (var group in posts.Where(post => activeSelection.Contains(post.id)).OrderBy(post => post.creation).GroupBy(post =>
+        {
             if (post.title.StartsWith("Culture War Roundup for the Week of"))
             {
                 return post.title.Replace("Culture War Roundup for the Week of", "Contributions for the Week of");
@@ -96,7 +107,7 @@
             {
                 IEnumerable<string> lines = post.text.Split("\n").Where(line => !line.StartsWith(">"));
                 string text = string.Join(" ", lines);
-                IEnumerable<string> words = text.Split(new char[] {' ', '\n', '\t'}).Where(word => word.Length > 0);
+                IEnumerable<string> words = text.Split(new char[] { ' ', '\n', '\t' }).Where(word => word.Length > 0);
                 string blurb = string.Join(" ", words.Take(20));    // TODO: split it based on character count, not word count?
 
                 // These characters cause problems.

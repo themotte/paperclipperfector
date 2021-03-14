@@ -33,6 +33,8 @@ namespace PaperclipPerfector
             // Add our extremely minimal authorization system            
             services.AddAuthorizationCore();
             services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
+
+            services.AddScoped<RefreshContext>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
