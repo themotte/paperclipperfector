@@ -4,7 +4,7 @@
 {
     <div class="postbutton-container">
         <button class="button postbutton @(failureText != null ? "failure" : "")" @onclick="MakePost">
-            @(failureText ?? "Make a new post")
+            @(failureText ?? "Consume these to make a new post (cannot be reversed!)")
         </button>
     </div>
 }
