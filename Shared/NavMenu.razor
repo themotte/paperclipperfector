@@ -20,12 +20,12 @@
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="pending">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Pending posts (@(Db.Instance.ReadAllPosts(Db.PostState.Pending).Count()))
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Pending posts (@(Db.Instance.CountAllPosts(Db.PostState.Pending)))
                 </NavLink>
             </li>
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="approved">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span>Approved posts (@(Db.Instance.ReadAllPosts(Db.PostState.Approved).Count()))
+                    <span class="oi oi-list-rich" aria-hidden="true"></span>Approved posts (@(Db.Instance.CountAllPosts(Db.PostState.Approved)))
                 </NavLink>
             </li>
             <br />

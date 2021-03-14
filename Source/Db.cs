@@ -28,7 +28,11 @@ namespace PaperclipPerfector
 
         private SQLiteCommand readPost;
         private SQLiteCommand readPosts;
+        private SQLiteCommand readPostsLimit;
+        private SQLiteCommand readPostsLimitReversed;
         private SQLiteCommand readReportsFor;
+
+        private SQLiteCommand countPosts;
 
         private SQLiteCommand finalizePostUpdate;
         private SQLiteCommand finalizePostCommit;
@@ -69,6 +73,13 @@ namespace PaperclipPerfector
             Approved,
             Rejected,
             Posted,
+        }
+
+        public enum LimitBehavior
+        {
+            All,
+            First,
+            Last,
         }
 
         public class Post
@@ -144,8 +155,12 @@ namespace PaperclipPerfector
             updateFlavorTitle = new SQLiteCommand("UPDATE posts SET flavorTitle = @flavorTitle WHERE id = @id", dbConnection);
 
             readPost = new SQLiteCommand("SELECT id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts WHERE id = @id", dbConnection);
-            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
+            readPosts = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC", dbConnection);
+            readPostsLimit = new SQLiteCommand("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC LIMIT @limit", dbConnection);
+            readPostsLimitReversed = new SQLiteCommand("SELECT * FROM (SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC LIMIT @limit) ORDER BY timestamp ASC", dbConnection);
             readReportsFor = new SQLiteCommand("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
+
+            countPosts = new SQLiteCommand("SELECT COUNT(DISTINCT posts.id) FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
 
             finalizePostUpdate = new SQLiteCommand("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
             finalizePostCommit = new SQLiteCommand("INSERT INTO postChunks(timestamp, id) VALUES(@timestamp, @id)", dbConnection);
@@ -234,7 +249,7 @@ namespace PaperclipPerfector
             }
         }
 
-        public Post[] ReadAllPosts(PostState state)
+        public Post[] ReadAllPosts(PostState state, int limit, LimitBehavior limitBehavior)
         {
             // This is just for the sake of getting an atomic snapshot
             // It's okay if it's a little out of date
@@ -242,10 +257,37 @@ namespace PaperclipPerfector
             {
                 var result = new List<Post>();
 
-                var posts = readPosts.ExecuteReader(new Dictionary<string, object>()
+                SQLiteDataReader posts;
+
+                if (limitBehavior == LimitBehavior.All)
                 {
-                    ["state"] = state.ToString(),
-                });
+                    posts = readPosts.ExecuteReader(new Dictionary<string, object>()
+                    {
+                        ["state"] = state.ToString(),
+                    });
+                }
+                else if (limitBehavior == LimitBehavior.First)
+                {
+                    posts = readPostsLimit.ExecuteReader(new Dictionary<string, object>()
+                    {
+                        ["state"] = state.ToString(),
+                        ["limit"] = limit.ToString(),
+                    });
+                }
+                else if (limitBehavior == LimitBehavior.Last)
+                {
+                    posts = readPostsLimitReversed.ExecuteReader(new Dictionary<string, object>()
+                    {
+                        ["state"] = state.ToString(),
+                        ["limit"] = limit.ToString(),
+                    });
+                }
+                else
+                {
+                    transaction.Rollback();
+                    return null;
+                }
+
                 while (posts.Read())
                 {
                     while (true)
@@ -284,6 +326,22 @@ namespace PaperclipPerfector
 
                 return result.ToArray();
             }
+        }
+
+        public int CountAllPosts(PostState state)
+        {
+            // We don't even really care if this is out of date
+            var result = countPosts.ExecuteReader(new Dictionary<string, object>()
+            {
+                ["state"] = state.ToString(),
+            });
+
+            result.Read();
+            int rv = (int)(long)result[0];
+
+            result.Close();
+
+            return rv;
         }
 
         private void UpdateActivePost(string id)

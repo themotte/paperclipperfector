@@ -25,6 +25,8 @@
 
 @code {
     [Parameter] public Db.PostState segment { get; set; }
+    [Parameter] public int limit { get; set; } = int.MaxValue;
+    [Parameter] public Db.LimitBehavior order { get; set; }
 
     private Db.Post[] posts = null;
     private HashSet<string> activeSelection = new HashSet<string>();
@@ -41,7 +43,7 @@
     {
         Db.Instance.RegisterCallback(StateHasChangedThreadsafe);
 
-        posts = Db.Instance.ReadAllPosts(segment);
+        posts = Db.Instance.ReadAllPosts(segment, limit, order);
     }
 
     public void StateHasChangedThreadsafe()
