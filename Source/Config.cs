@@ -25,10 +25,18 @@ namespace PaperclipPerfector
             {
                 if (StoredInstance == null)
                 {
-                    StoredInstance = JsonConvert.DeserializeObject<Config>(File.ReadAllText(Path.Join(Datamount, "config.json")));
+                    StoredInstance = JsonConvert.DeserializeObject<Config>(File.ReadAllText(Path.Join(Configmount, "config.json")));
                 }
 
                 return StoredInstance;
+            }
+        }
+
+        private static string Configmount
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("PPCONFIG") ?? ".";
             }
         }
 
