@@ -93,9 +93,9 @@
         string result = "";
         foreach (var group in posts.Where(post => activeSelection.Contains(post.id)).OrderBy(post => post.creation).GroupBy(post =>
         {
-            if (post.title.StartsWith("Culture War Roundup for the Week of"))
+            if (post.title.StartsWith("Culture War Roundup for the week of"))
             {
-                return post.title.Replace("Culture War Roundup for the Week of", "Contributions for the Week of");
+                return post.title.Replace("Culture War Roundup for the week of", "Contributions for the week of");
             }
 
             return "Quality Contributions in the Main Subreddit";
