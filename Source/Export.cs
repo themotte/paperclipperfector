@@ -9,19 +9,21 @@ namespace PaperclipPerfector
     {
         public static void Run()
         {
-            var doc = new XDocument(new XElement("posts",
-                    Db.Instance.ReadAllPosts(Db.PostState.Posted, int.MaxValue, Db.LimitBehavior.All).Select(post =>
-                        new XElement("post",
+            Directory.CreateDirectory("export");
+
+            foreach (var post in Db.Instance.ReadAllPosts(Db.PostState.Posted, int.MaxValue, Db.LimitBehavior.All))
+            {
+                var doc = new XDocument(
+                    new XElement("post",
                             new XElement("author", post.author),
                             new XElement("date", post.creation),
                             new XElement("link", post.link),
                             new XElement("title", post.flavorTitle.Trim('.')),
                             new XElement("body", post.html)
                         )
-                    )
-                ));
-
-            File.WriteAllText("export.xml", doc.ToString());
+                    );
+                File.WriteAllText($"export/{post.author}-{post.creation.ToString("yyyyMMddHHmmss")}.xml", doc.ToString());
+            }
         }
     }
 }
