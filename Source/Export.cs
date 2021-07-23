@@ -15,7 +15,7 @@ namespace PaperclipPerfector
             {
                 var massagedXml = post.html.Replace("&euro;", "€").Replace("&mdash;", "—").Replace("&ndash;", "–");
                 var doc = new XDocument(
-                    new XElement("post",
+                    new XElement("Post",
                             new XElement("author", post.author),
                             new XElement("date", post.creation),
                             new XElement("link", post.link),
