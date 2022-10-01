@@ -11,12 +11,12 @@ using System.Web;
 
 namespace PaperclipPerfector
 {
-    public class CommandTemplate
+    public class CommandTemplateSQLite
     {
         private readonly string sql;
         private readonly SQLiteConnection connection;
 
-        public CommandTemplate(string sql, SQLiteConnection connection)
+        public CommandTemplateSQLite(string sql, SQLiteConnection connection)
         {
             this.sql = sql;
             this.connection = connection;

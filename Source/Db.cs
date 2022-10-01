@@ -18,32 +18,32 @@ namespace PaperclipPerfector
     {
         private SQLiteConnection dbConnection;
 
-        private CommandTemplate insertPost;
-        private CommandTemplate insertReportType;
-        private CommandTemplate clearReports;
-        private CommandTemplate insertReport;
+        private CommandTemplateSQLite insertPost;
+        private CommandTemplateSQLite insertReportType;
+        private CommandTemplateSQLite clearReports;
+        private CommandTemplateSQLite insertReport;
 
-        private CommandTemplate updatePostState;
-        private CommandTemplate updateFlavorTitle;
+        private CommandTemplateSQLite updatePostState;
+        private CommandTemplateSQLite updateFlavorTitle;
 
-        private CommandTemplate readPost;
-        private CommandTemplate readPosts;
-        private CommandTemplate readPostsLimit;
-        private CommandTemplate readPostsLimitReversed;
-        private CommandTemplate readReportsFor;
+        private CommandTemplateSQLite readPost;
+        private CommandTemplateSQLite readPosts;
+        private CommandTemplateSQLite readPostsLimit;
+        private CommandTemplateSQLite readPostsLimitReversed;
+        private CommandTemplateSQLite readReportsFor;
 
-        private CommandTemplate countPosts;
+        private CommandTemplateSQLite countPosts;
 
-        private CommandTemplate finalizePostUpdate;
-        private CommandTemplate finalizePostCommit;
-        private CommandTemplate updateReportType;
+        private CommandTemplateSQLite finalizePostUpdate;
+        private CommandTemplateSQLite finalizePostCommit;
+        private CommandTemplateSQLite updateReportType;
 
-        private CommandTemplate readReportType;
-        private CommandTemplate readReportTypes;
-        private CommandTemplate readUnassignedReportTypes;
+        private CommandTemplateSQLite readReportType;
+        private CommandTemplateSQLite readReportTypes;
+        private CommandTemplateSQLite readUnassignedReportTypes;
 
-        private CommandTemplate readGlobalProp;
-        private CommandTemplate writeGlobalProp;
+        private CommandTemplateSQLite readGlobalProp;
+        private CommandTemplateSQLite writeGlobalProp;
 
         // bool exists just because what we really want is a hashset
         // these are the only mutable values in here, the rest are all const and threadsafe
@@ -148,32 +148,32 @@ namespace PaperclipPerfector
             dbConnection.ExecuteNonQuery("CREATE INDEX IF NOT EXISTS reports_type ON reports (reportTypeId, postId)");
 
             // Init commands
-            insertPost = new CommandTemplate("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups, title=excluded.title", dbConnection);   // Note: The title *shouldn't* change, but at one point I had a bug where it wasn't parsed properly. This updates it for existing posts.
-            insertReportType = new CommandTemplate($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
-            clearReports = new CommandTemplate("DELETE FROM reports WHERE postId = @postId", dbConnection);
-            insertReport = new CommandTemplate("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
+            insertPost = new CommandTemplateSQLite("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups, title=excluded.title", dbConnection);   // Note: The title *shouldn't* change, but at one point I had a bug where it wasn't parsed properly. This updates it for existing posts.
+            insertReportType = new CommandTemplateSQLite($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
+            clearReports = new CommandTemplateSQLite("DELETE FROM reports WHERE postId = @postId", dbConnection);
+            insertReport = new CommandTemplateSQLite("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
 
-            updatePostState = new CommandTemplate("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
-            updateFlavorTitle = new CommandTemplate("UPDATE posts SET flavorTitle = @flavorTitle WHERE id = @id", dbConnection);
+            updatePostState = new CommandTemplateSQLite("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
+            updateFlavorTitle = new CommandTemplateSQLite("UPDATE posts SET flavorTitle = @flavorTitle WHERE id = @id", dbConnection);
 
-            readPost = new CommandTemplate("SELECT id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts WHERE id = @id", dbConnection);
-            readPosts = new CommandTemplate("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC", dbConnection);
-            readPostsLimit = new CommandTemplate("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC LIMIT @limit", dbConnection);
-            readPostsLimitReversed = new CommandTemplate("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC LIMIT @limit", dbConnection);
-            readReportsFor = new CommandTemplate("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
+            readPost = new CommandTemplateSQLite("SELECT id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts WHERE id = @id", dbConnection);
+            readPosts = new CommandTemplateSQLite("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC", dbConnection);
+            readPostsLimit = new CommandTemplateSQLite("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp ASC LIMIT @limit", dbConnection);
+            readPostsLimitReversed = new CommandTemplateSQLite("SELECT DISTINCT posts.id AS id, author, html, text, ups, permalink, timestamp, title, state, flavorTitle FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC LIMIT @limit", dbConnection);
+            readReportsFor = new CommandTemplateSQLite("SELECT reportTypeId, count FROM reports WHERE postId = @postId", dbConnection);
 
-            countPosts = new CommandTemplate("SELECT COUNT(DISTINCT posts.id) FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
+            countPosts = new CommandTemplateSQLite("SELECT COUNT(DISTINCT posts.id) FROM posts INNER JOIN reports ON posts.id = reports.postId INNER JOIN reportTypes ON reports.reportTypeId = reportTypes.id WHERE state = @state AND reportTypes.category = 'Positive' ORDER BY timestamp DESC", dbConnection);
 
-            finalizePostUpdate = new CommandTemplate("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
-            finalizePostCommit = new CommandTemplate("INSERT INTO postChunks(timestamp, id) VALUES(@timestamp, @id)", dbConnection);
-            updateReportType = new CommandTemplate("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
+            finalizePostUpdate = new CommandTemplateSQLite("UPDATE posts SET state = 'Posted' WHERE id = @id AND state = 'Approved'", dbConnection);
+            finalizePostCommit = new CommandTemplateSQLite("INSERT INTO postChunks(timestamp, id) VALUES(@timestamp, @id)", dbConnection);
+            updateReportType = new CommandTemplateSQLite("UPDATE reportTypes SET category = @category WHERE id = @id", dbConnection);
 
-            readReportType = new CommandTemplate("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
-            readReportTypes = new CommandTemplate("SELECT id, category FROM reportTypes", dbConnection);
-            readUnassignedReportTypes = new CommandTemplate("SELECT id, category FROM reportTypes WHERE category = 'Unassigned'", dbConnection);
+            readReportType = new CommandTemplateSQLite("SELECT id, category FROM reportTypes WHERE id = @id", dbConnection);
+            readReportTypes = new CommandTemplateSQLite("SELECT id, category FROM reportTypes", dbConnection);
+            readUnassignedReportTypes = new CommandTemplateSQLite("SELECT id, category FROM reportTypes WHERE category = 'Unassigned'", dbConnection);
 
-            readGlobalProp = new CommandTemplate("SELECT value FROM globalProps WHERE key = @key", dbConnection);
-            writeGlobalProp = new CommandTemplate("INSERT INTO globalProps(key, value) VALUES(@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value", dbConnection);
+            readGlobalProp = new CommandTemplateSQLite("SELECT value FROM globalProps WHERE key = @key", dbConnection);
+            writeGlobalProp = new CommandTemplateSQLite("INSERT INTO globalProps(key, value) VALUES(@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value", dbConnection);
         }
 
         public void UpdateSchema()
