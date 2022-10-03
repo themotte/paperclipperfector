@@ -98,6 +98,35 @@ namespace PaperclipPerfector
 
             public Report[] reports;
 
+            public string GetAuthorUrl()
+            {
+                if (IsReddit())
+                {
+                    return $"https://www.reddit.com/user/{author}";
+                }
+                else
+                {
+                    return $"https://www.themotte.org/@{author}";
+                }
+            }
+
+            public string GetTrueUrl()
+            {
+                if (IsReddit())
+                {
+                    return $"https://www.reddit.com{link}?context=3";
+                }
+                else
+                {
+                    return $"{link}?context=3";
+                }
+            }
+
+            public bool IsReddit()
+            {
+                return !link.StartsWith("https://www.themotte.org");
+            }
+
             public class Report
             {
                 public ReportType reason;
@@ -151,7 +180,7 @@ namespace PaperclipPerfector
             insertPost = new CommandTemplateSQLite("INSERT INTO posts(id, author, html, text, ups, permalink, timestamp, title, state) VALUES(@id, @author, @html, @text, @ups, @permalink, @timestamp, @title, @state) ON CONFLICT(id) DO UPDATE SET html=excluded.html, text=excluded.text, ups=excluded.ups, title=excluded.title", dbConnection);   // Note: The title *shouldn't* change, but at one point I had a bug where it wasn't parsed properly. This updates it for existing posts.
             insertReportType = new CommandTemplateSQLite($"INSERT OR IGNORE INTO reportTypes(id, category) VALUES(@id, '{ReportCategory.Unassigned}')", dbConnection);
             clearReports = new CommandTemplateSQLite("DELETE FROM reports WHERE postId = @postId", dbConnection);
-            insertReport = new CommandTemplateSQLite("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count)", dbConnection);
+            insertReport = new CommandTemplateSQLite("INSERT INTO reports(postId, reportTypeId, count) VALUES(@postId, @reportTypeId, @count) ON CONFLICT(postId, reportTypeId) DO UPDATE SET count=excluded.count", dbConnection);
 
             updatePostState = new CommandTemplateSQLite("UPDATE posts SET state = @state WHERE id = @id", dbConnection);
             updateFlavorTitle = new CommandTemplateSQLite("UPDATE posts SET flavorTitle = @flavorTitle WHERE id = @id", dbConnection);
@@ -239,6 +268,37 @@ namespace PaperclipPerfector
                 insertReport.ExecuteNonQuery(new Dictionary<string, object>()
                 {
                     ["postId"] = post.name,
+                    ["reportTypeId"] = report.reason,
+                    ["count"] = report.count,
+                });
+            }
+        }
+
+        public void UpdatePostData(MotteApi.Post post)
+        {
+            insertPost.ExecuteNonQuery(new Dictionary<string, object>()
+            {
+                ["id"] = post.id,
+                ["author"] = post.author,
+                ["html"] = post.html,
+                ["text"] = "I don't think this is ever used",
+                ["ups"] = post.score,
+                ["permalink"] = post.permalink,
+                ["timestamp"] = post.timestamp,
+                ["title"] = post.title,
+                ["state"] = PostState.Pending.ToString(),
+            });
+
+            foreach (var report in post.reports)
+            {
+                insertReportType.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["id"] = report.reason,
+                });
+
+                insertReport.ExecuteNonQuery(new Dictionary<string, object>()
+                {
+                    ["postId"] = post.id,
                     ["reportTypeId"] = report.reason,
                     ["count"] = report.count,
                 });

@@ -13,7 +13,7 @@ namespace PaperclipPerfector
         {
             return new SQLiteCommand(command, connection).ExecuteNonQuery();
         }
-        public static T GetField<T>(this SQLiteDataReader reader, string label)
+        public static T GetField<T>(this System.Data.Common.DbDataReader reader, string label)
         {
             // Inefficient, but right now I don't care.
             return reader.GetFieldValue<T>(reader.GetOrdinal(label));

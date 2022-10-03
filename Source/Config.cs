@@ -14,6 +14,8 @@ namespace PaperclipPerfector
 
         public string subreddit;
 
+        public string postgres;
+
         public string password;
 
         public bool read_only = true;

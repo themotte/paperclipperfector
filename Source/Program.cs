@@ -17,7 +17,8 @@ namespace PaperclipPerfector
             Export.Run();
 
             // live free! live free forever!
-            new RedditScraper().Spawner().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
+            //new RedditScraper().Spawner().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
+            new MotteScraper().Spawner().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
 
             CreateHostBuilder(args).Build().Run();
         }

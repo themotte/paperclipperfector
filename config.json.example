@@ -5,6 +5,8 @@
 
     "subreddit": "catpictures",
     "password": "AVerySecurePassword",
+
+    "postgres":  "postgres",
     
     "read_only": false
 }

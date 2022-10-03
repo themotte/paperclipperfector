@@ -4,7 +4,7 @@
         {
             <div class="rw-selection"><input type="checkbox" @bind="@selected" /></div>
         }
-        <div class="rw-permalink"><a href="@($"https://www.reddit.com{post.link}?context=3")">@post.id</a></div>
+        <div class="rw-permalink"><a href="@post.GetTrueUrl()">@post.id</a></div>
         <div class="rw-title">@post.title</div>
     </div>
     <div class="rw-line">
@@ -33,7 +33,7 @@
             }
         </div>
         <div class="rw-timestamp">@post.creation</div>
-        <div class="rw-author"><a href="@($"https://www.reddit.com/user/{post.author}")">@post.author</a></div>
+        <div class="rw-author"><a href="@post.GetAuthorUrl()">@post.author</a></div>
         <div class="rw-actions">
             @if (controls)
             {
