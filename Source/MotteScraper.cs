@@ -26,8 +26,8 @@ namespace PaperclipPerfector
             getPostReports = new CommandTemplatePostgres("SELECT post_id AS id, reason FROM flags", dbConnection);
             getCommentReports = new CommandTemplatePostgres("SELECT comment_id AS id, reason FROM commentflags", dbConnection);
 
-            getPostData = new CommandTemplatePostgres("SELECT submissions.id AS id, username, body_html, upvotes - downvotes as score, submissions.created_utc AS created_utc, title FROM submissions, users WHERE author_id = users.id AND submissions.id = ANY (@items)", dbConnection);
-            getCommentData = new CommandTemplatePostgres("SELECT comments.id AS id, username, comments.body_html as body_html, comments.upvotes - comments.downvotes as score, comments.created_utc AS created_utc, submissions.title as title FROM comments, users, submissions WHERE comments.author_id = users.id AND parent_submission = submissions.id AND comments.id = ANY (@items)", dbConnection);
+            getPostData = new CommandTemplatePostgres("SELECT submissions.id AS id, username, body_html, upvotes - downvotes as score, submissions.created_utc AS created_utc, title, submissions.body AS body FROM submissions, users WHERE author_id = users.id AND submissions.id = ANY (@items)", dbConnection);
+            getCommentData = new CommandTemplatePostgres("SELECT comments.id AS id, username, comments.body_html as body_html, comments.upvotes - comments.downvotes as score, comments.created_utc AS created_utc, submissions.title as title, comments.body AS body FROM comments, users, submissions WHERE comments.author_id = users.id AND parent_submission = submissions.id AND comments.id = ANY (@items)", dbConnection);
         }
 
         public async Task Spawner()
@@ -87,6 +87,7 @@ namespace PaperclipPerfector
                 Post.id = $"{prefix}{id}";
                 Post.author = itemReader.GetField<string>("username");
                 Post.html = itemReader.GetField<string>("body_html");
+                Post.text = itemReader.GetField<string>("body");
                 Post.score = itemReader.GetField<int>("score");
                 Post.permalink = $"https://www.themotte.org/{urltag}/{id}";
                 Post.timestamp = itemReader.GetField<long>("created_utc");

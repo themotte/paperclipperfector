@@ -293,7 +293,7 @@ namespace PaperclipPerfector
                 ["id"] = post.id,
                 ["author"] = post.author,
                 ["html"] = post.html,
-                ["text"] = "I don't think this is ever used",
+                ["text"] = post.text,
                 ["ups"] = post.score,
                 ["permalink"] = post.permalink,
                 ["timestamp"] = post.timestamp,

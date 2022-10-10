@@ -12,6 +12,7 @@ namespace PaperclipPerfector
             public string id;
             public string author;
             public string html;
+            public string text;
             public int score;
             public string permalink;
             public long timestamp;
