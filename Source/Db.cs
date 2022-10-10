@@ -110,6 +110,18 @@ namespace PaperclipPerfector
                 }
             }
 
+            public string GetAuthorLink()
+            {
+                if (IsReddit())
+                {
+                    return $"/u/{author}";
+                }
+                else
+                {
+                    return $"@{author}";
+                }
+            }
+
             public string GetTrueUrl()
             {
                 if (IsReddit())

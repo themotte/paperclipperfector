@@ -122,7 +122,7 @@
                     flavor = blurb;
                 }
 
-                result += $"/u/{post.author} on:\n\n* [{flavor}]({post.link}?context=3&sort=best)\n\n";
+                result += $"{post.GetAuthorLink()} on:\n\n* [{flavor}]({post.link}?context=3#context)\n\n";
             }
         }
 
