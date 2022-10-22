@@ -13,7 +13,7 @@ namespace PaperclipPerfector
 
             foreach (var post in Db.Instance.ReadAllPosts(Db.PostState.Posted, int.MaxValue, Db.LimitBehavior.All))
             {
-                var massagedXml = post.html.Replace("&euro;", "€").Replace("&mdash;", "—").Replace("&ndash;", "–");
+                var massagedXml = post.html.Replace("&euro;", "€").Replace("&mdash;", "—").Replace("&ndash;", "–").Replace("<hr>", "<hr />").Replace("<hr /></hr>", "<hr />");
                 var doc = new XDocument(
                     new XElement("Post",
                             new XElement("author", post.author),
