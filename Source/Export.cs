@@ -20,7 +20,7 @@ namespace PaperclipPerfector
                             new XElement("date", post.creation),
                             new XElement("link", post.link),
                             new XElement("title", post.flavorTitle.Trim('.')),
-                            new XElement("body", XElement.Parse(massagedXml))
+                            new XElement("body", XElement.Parse($"<div>{massagedXml}</div>"))
                         )
                     );
                 File.WriteAllText($"export/{post.author}-{post.creation.ToString("yyyyMMddHHmmss")}.xml", doc.ToString());
