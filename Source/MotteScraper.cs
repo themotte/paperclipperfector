@@ -42,6 +42,9 @@ namespace PaperclipPerfector
                 {
                     Dbg.Ex(e);
                     await Task.Delay(TimeSpan.FromHours(1));
+
+                    // abort and restart, thereby bouncing everything
+                    System.Diagnostics.Process.GetCurrentProcess().Kill();
                 }
             }
         }
