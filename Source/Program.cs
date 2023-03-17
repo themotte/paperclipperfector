@@ -14,7 +14,7 @@ namespace PaperclipPerfector
             var db = Db.Instance;
             db.UpdateSchema();
 
-            Export.Run();
+            //Export.Run();
 
             // live free! live free forever!
             //new RedditScraper().Spawner().ContinueWith(t => Console.WriteLine(t.Exception), System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
