@@ -40,11 +40,15 @@ namespace PaperclipPerfector
                 }
                 catch (Exception e)
                 {
+                    Dbg.Inf("AN EXCEPTION");
                     Dbg.Ex(e);
-                    await Task.Delay(TimeSpan.FromHours(1));
+                    Dbg.Inf("MORE AN EXCEPTION");
 
                     // abort and restart, thereby bouncing everything
                     System.Diagnostics.Process.GetCurrentProcess().Kill();
+                    Dbg.Inf("IT DIDN'T WORK");
+
+                    await Task.Delay(TimeSpan.FromHours(1));
                 }
             }
         }
