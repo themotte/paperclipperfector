@@ -45,7 +45,7 @@ namespace PaperclipPerfector
                     Dbg.Inf("MORE AN EXCEPTION");
 
                     // abort and restart, thereby bouncing everything
-                    System.Diagnostics.Process.GetCurrentProcess().Kill();
+                    System.Environment.Exit(1);
                     Dbg.Inf("IT DIDN'T WORK");
 
                     await Task.Delay(TimeSpan.FromHours(1));
